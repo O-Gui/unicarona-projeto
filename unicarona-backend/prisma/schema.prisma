@@ -1,0 +1,72 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis]
+}
+
+enum Perfil {
+  PASSAGEIRO
+  MOTORISTA
+  AMBOS
+  ADMIN
+}
+
+// UC01: Módulo de Cadastro e Autenticação
+model Usuario {
+  id                 String   @id @default(uuid()) @db.Uuid
+  nomeCompleto       String   @map("nome_completo") @db.VarChar(100)
+  cpf                String   @unique @db.VarChar(11)
+  emailInstitucional String   @unique @map("email_institucional") @db.VarChar(150)
+  senhaHash          String   @map("senha_hash") @db.VarChar(255)
+  perfil             Perfil   @default(PASSAGEIRO)
+  biometriaValidada  Boolean  @default(false) @map("biometria_validada") 
+  mediaAvaliacao     Decimal  @default(5.00) @map("media_avaliacao") @db.Decimal(3, 2)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  veiculos           Veiculo[]
+  rotas              Rota[]
+  @@map("usuarios")
+}
+
+// UC01 - Subfluxo S01: Cadastrar Dados do Veículo
+model Veiculo {
+  id               String   @id @default(uuid()) @db.Uuid
+  motoristaId      String   @map("motorista_id") @db.Uuid
+  motorista        Usuario  @relation(fields: [motoristaId], references: [id], onDelete: Cascade)
+  modelo           String   @db.VarChar(50)
+  cor              String   @db.VarChar(20)
+  placa            String   @unique @db.VarChar(10)
+  ano              Int
+  vagasDisponiveis Int      @map("vagas_disponiveis")
+  
+  rotas            Rota[]
+  @@map("veiculos")
+}
+
+// UC02 e UC04: Gestão de Rotas e Base para o Algoritmo de Matching
+model Rota {
+  id               String   @id @default(uuid()) @db.Uuid
+  motoristaId      String   @map("motorista_id") @db.Uuid
+  motorista        Usuario  @relation(fields: [motoristaId], references: [id], onDelete: Cascade)
+  veiculoId        String   @map("veiculo_id") @db.Uuid
+  veiculo          Veiculo  @relation(fields: [veiculoId], references: [id], onDelete: Restrict)
+  
+  origemEndereco   String   @map("origem_endereco") @db.VarChar(255)
+  // Restrição da arquitetura: Geography data type para o motor de matching
+  origemGeom       Unsupported("geography(Point, 4326)") @map("origem_geom")
+  
+  destinoEndereco  String   @map("destino_endereco") @db.VarChar(255)
+  destinoGeom      Unsupported("geography(Point, 4326)") @map("destino_geom")
+  
+  diasSemana       String[] @map("dias_semana")
+  horarioPartida   String   @map("horario_partida") 
+  vagasOfertadas   Int      @map("vagas_ofertadas")
+  ativa            Boolean  @default(true)
+  
+  @@map("rotas")
+}
