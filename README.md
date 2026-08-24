@@ -34,3 +34,5 @@ Se quiser inspecionar as tabelas visualmente no navegador, abra um novo terminal
 
 ```Bash
 npx prisma studio
+
+DATABASE_URL="postgresql://postgres:minha_senha_segura@localhost:5432/unicarona_db?schema=public"
