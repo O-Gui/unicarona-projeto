@@ -1,72 +1,103 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
+  // Habilita a extensão do PostGIS no Prisma
+  previewFeatures = ["postgresqlExtensions"] 
 }
 
 datasource db {
   provider   = "postgresql"
-  extensions = [postgis]
+  url        = env("DATABASE_URL")
+  extensions = [postgis] // Instala o PostGIS automaticamente
 }
 
-enum Perfil {
-  PASSAGEIRO
-  MOTORISTA
-  AMBOS
-  ADMIN
-}
+// =========================================================================
+// TABELAS DO SISTEMA (MODELAGEM UNICARONA)
+// =========================================================================
 
-// UC01: Módulo de Cadastro e Autenticação
 model Usuario {
-  id                 String   @id @default(uuid()) @db.Uuid
-  nomeCompleto       String   @map("nome_completo") @db.VarChar(100)
-  cpf                String   @unique @db.VarChar(11)
-  emailInstitucional String   @unique @map("email_institucional") @db.VarChar(150)
-  senhaHash          String   @map("senha_hash") @db.VarChar(255)
-  perfil             Perfil   @default(PASSAGEIRO)
-  biometriaValidada  Boolean  @default(false) @map("biometria_validada") 
-  mediaAvaliacao     Decimal  @default(5.00) @map("media_avaliacao") @db.Decimal(3, 2)
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  veiculos           Veiculo[]
-  rotas              Rota[]
-  @@map("usuarios")
+  id            String         @id @default(uuid()) @db.Uuid
+  nome          String
+  email         String         @unique
+  senhaHash     String
+  emailValidado Boolean        @default(false)
+  
+  // Relacionamentos
+  veiculos      Veiculo[]
+  rotas         Rota[]
+  solicitacoes  Solicitacao[]
+  participacoes Participacao[]
 }
 
-// UC01 - Subfluxo S01: Cadastrar Dados do Veículo
 model Veiculo {
-  id               String   @id @default(uuid()) @db.Uuid
-  motoristaId      String   @map("motorista_id") @db.Uuid
-  motorista        Usuario  @relation(fields: [motoristaId], references: [id], onDelete: Cascade)
-  modelo           String   @db.VarChar(50)
-  cor              String   @db.VarChar(20)
-  placa            String   @unique @db.VarChar(10)
-  ano              Int
-  vagasDisponiveis Int      @map("vagas_disponiveis")
+  id              String  @id @default(uuid()) @db.Uuid
+  usuarioId       String  @db.Uuid
+  placa           String  @unique
+  // A validação de 1 a 4 vagas deve ser feita no código do backend (NestJS)
+  capacidadeVagas Int     
   
-  rotas            Rota[]
-  @@map("veiculos")
+  usuario         Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
-// UC02 e UC04: Gestão de Rotas e Base para o Algoritmo de Matching
 model Rota {
-  id               String   @id @default(uuid()) @db.Uuid
-  motoristaId      String   @map("motorista_id") @db.Uuid
-  motorista        Usuario  @relation(fields: [motoristaId], references: [id], onDelete: Cascade)
-  veiculoId        String   @map("veiculo_id") @db.Uuid
-  veiculo          Veiculo  @relation(fields: [veiculoId], references: [id], onDelete: Restrict)
+  id           String  @id @default(uuid()) @db.Uuid
+  usuarioId    String  @db.Uuid
   
-  origemEndereco   String   @map("origem_endereco") @db.VarChar(255)
-  // Restrição da arquitetura: Geography data type para o motor de matching
-  origemGeom       Unsupported("geography(Point, 4326)") @map("origem_geom")
+  // Tipo geográfico do PostGIS suportado pelo Prisma
+  pontoOrigem  Unsupported("geography(Point, 4326)")
+  pontoDestino Unsupported("geography(Point, 4326)")
   
-  destinoEndereco  String   @map("destino_endereco") @db.VarChar(255)
-  destinoGeom      Unsupported("geography(Point, 4326)") @map("destino_geom")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  caronas      Carona[]
+}
+
+model Carona {
+  id              String        @id @default(uuid()) @db.Uuid
+  rotaId          String        @db.Uuid
+  dataHoraPartida DateTime
   
-  diasSemana       String[] @map("dias_semana")
-  horarioPartida   String   @map("horario_partida") 
-  vagasOfertadas   Int      @map("vagas_ofertadas")
-  ativa            Boolean  @default(true)
+  rota            Rota          @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  solicitacoes    Solicitacao[]
+  viagem          Viagem?
+}
+
+model Solicitacao {
+  id           String  @id @default(uuid()) @db.Uuid
+  passageiroId String  @db.Uuid
+  caronaId     String  @db.Uuid
+  status       String  @default("PENDENTE")
   
-  @@map("rotas")
+  passageiro   Usuario @relation(fields: [passageiroId], references: [id], onDelete: Cascade)
+  carona       Carona  @relation(fields: [caronaId], references: [id], onDelete: Cascade)
+}
+
+// =========================================================================
+// TABELAS DE HISTÓRICO E AUDITORIA (IMUTÁVEIS - Restrict)
+// =========================================================================
+
+model Viagem {
+  id           String         @id @default(uuid()) @db.Uuid
+  caronaId     String         @unique @db.Uuid
+  statusViagem String         @default("CONCLUIDA")
+  
+  carona       Carona         @relation(fields: [caronaId], references: [id], onDelete: Restrict)
+  participantes Participacao[]
+  avaliacoes    Avaliacao[]
+}
+
+model Participacao {
+  id        String  @id @default(uuid()) @db.Uuid
+  viagemId  String  @db.Uuid
+  usuarioId String  @db.Uuid
+  
+  viagem    Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+}
+
+model Avaliacao {
+  id       String  @id @default(uuid()) @db.Uuid
+  viagemId String  @db.Uuid
+  // A validação de nota de 1 a 5 deve ser feita no código do backend (NestJS)
+  nota     Int
+  
+  viagem   Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
 }
