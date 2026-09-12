@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "UniCarona",
+    "slug": "unicarona",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "unicarona",
+    "splash": {
+      "backgroundColor": "#0B2A4A"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2A4A"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
