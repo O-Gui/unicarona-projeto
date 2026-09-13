@@ -1,28 +1,54 @@
-Sim, é totalmente possível — e **é uma ótima ideia**. Como seus amigos vão clonar a branch e rodar o projeto em máquinas diferentes, o README deve explicar principalmente **pré-requisitos, banco, backend, mobile e como conectar o celular ao backend**.
-
-Eu faria um `README.md` dentro da raiz do projeto (`unicarona-projeto/`) assim:
-
-````md
 # UniCarona 🚗
 
-Aplicação de caronas universitárias desenvolvida para facilitar o compartilhamento de trajetos entre estudantes.
+Sistema de compartilhamento de caronas desenvolvido para a comunidade universitária.
 
-O projeto atualmente possui:
-
-- Backend em NestJS
-- Banco de dados PostgreSQL
-- Prisma ORM
-- Aplicativo mobile em React Native + Expo
-- Autenticação com JWT
-- Cadastro de usuários
-- Validação de e-mail institucional
-- Recuperação e redefinição de senha
-- Cadastro e atualização de veículo
-- Interface mobile das telas iniciais
+O UniCarona tem como objetivo facilitar a conexão entre estudantes que realizam trajetos semelhantes, permitindo o compartilhamento de caronas de forma simples e organizada.
 
 ---
 
-# 📁 Estrutura do projeto
+## 📌 Sobre o projeto
+
+O projeto é composto por uma aplicação **mobile** e uma API **backend**, utilizando autenticação de usuários, validação de e-mail institucional e gerenciamento de veículos.
+
+### Funcionalidades implementadas
+
+- Cadastro de usuário
+- Validação de e-mail institucional
+- Login com autenticação JWT
+- Logout
+- Recuperação de senha
+- Redefinição de senha
+- Cadastro de veículo
+- Atualização de veículo
+- Consulta dos dados do usuário
+- Interface mobile das telas de autenticação
+- Tela inicial (Splash Screen)
+- Perfil do usuário
+
+---
+
+## 🏗️ Tecnologias utilizadas
+
+### Backend
+
+- [NestJS](https://nestjs.com/)
+- TypeScript
+- Prisma ORM
+- PostgreSQL
+- JWT
+- Docker
+
+### Mobile
+
+- React Native
+- Expo
+- TypeScript
+- Expo Go
+- AsyncStorage
+
+---
+
+## 📁 Estrutura do projeto
 
 ```text
 unicarona-projeto/
@@ -41,21 +67,23 @@ unicarona-projeto/
     ├── app.json
     ├── package.json
     └── tsconfig.json
-````
+```
 
 ---
 
-# 🛠️ Pré-requisitos
+# 🚀 Configuração do projeto
 
-Antes de começar, instale:
+## 1. Pré-requisitos
 
-* Node.js
-* npm
-* Git
-* Docker Desktop
-* Expo Go no celular
+Antes de executar o projeto, certifique-se de ter instalado:
 
-Verifique as instalações:
+- Node.js
+- npm
+- Git
+- Docker Desktop
+- Expo Go no celular
+
+Para verificar as instalações:
 
 ```bash
 node --version
@@ -66,27 +94,37 @@ docker --version
 
 ---
 
-# 📥 1. Clonar o projeto
+# 📥 2. Clonar o repositório
 
-Clone o repositório:
+Clone o projeto:
 
 ```bash
 git clone https://github.com/O-Gui/unicarona-projeto.git
 ```
 
-Entre na pasta:
+Entre na pasta do projeto:
 
 ```bash
 cd unicarona-projeto
 ```
 
-Troque para a branch de integração:
+---
+
+# 🌿 3. Acessar a branch de integração
+
+As funcionalidades atualmente integradas entre o mobile e o backend estão na branch:
+
+```text
+feature/integracao-mobile-backend
+```
+
+Acesse a branch:
 
 ```bash
 git checkout feature/integracao-mobile-backend
 ```
 
-Atualize a branch:
+Atualize os arquivos:
 
 ```bash
 git pull
@@ -94,27 +132,35 @@ git pull
 
 ---
 
-# 🗄️ 2. Subir o banco de dados
+# 🗄️ 4. Configurar o banco de dados
 
-Na raiz do projeto:
+Na raiz do projeto, execute:
 
 ```bash
 docker compose up -d
 ```
 
-Confira se o container está rodando:
+Para verificar se o container está funcionando:
 
 ```bash
 docker ps
 ```
 
-Deve aparecer o container do PostgreSQL do UniCarona.
+O PostgreSQL utilizado pelo projeto deverá estar em execução.
+
+### Parar o banco
+
+Quando terminar o desenvolvimento:
+
+```bash
+docker compose down
+```
 
 ---
 
-# 🔧 3. Configurar o Backend
+# 🔧 5. Configurar o Backend
 
-Entre na pasta:
+Entre na pasta do backend:
 
 ```bash
 cd unicarona-backend
@@ -126,57 +172,63 @@ Instale as dependências:
 npm install
 ```
 
-Crie o arquivo `.env`:
+---
+
+## 5.1 Configurar as variáveis de ambiente
+
+Crie um arquivo `.env` a partir do arquivo de exemplo.
+
+No Windows:
 
 ```bash
 copy .env.example .env
 ```
 
-> No Linux/macOS, use:
->
-> ```bash
-> cp .env.example .env
-> ```
+No Linux/macOS:
 
-Abra o `.env` e configure:
+```bash
+cp .env.example .env
+```
+
+Depois, abra o arquivo `.env` e configure as variáveis necessárias.
+
+Exemplo:
 
 ```env
 PORT=3000
 
-DATABASE_URL="postgresql://SEU_USUARIO:SUA_SENHA@localhost:5432/unicarona_db?schema=public"
+DATABASE_URL="postgresql://USUARIO:SENHA@localhost:5432/unicarona_db?schema=public"
 
 JWT_EXPIRES_IN_SECONDS=86400
 
 EMAIL_CODE_EXPIRATION_MINUTES=10
 ```
 
-> Não faça commit do arquivo `.env`.
+> **Importante:** os valores reais do `.env` são locais para cada desenvolvedor e não devem ser enviados para o Git.
 
 ---
 
-# 🧬 4. Configurar o Prisma
+# 🧬 6. Configurar o Prisma
 
-Ainda dentro de `unicarona-backend`:
-
-Gere o Prisma Client:
+Ainda dentro da pasta `unicarona-backend`, execute:
 
 ```bash
 npx prisma generate
 ```
 
-Execute as migrations:
+Depois execute as migrations:
 
 ```bash
 npx prisma migrate dev
 ```
 
-Se o banco estiver vazio e tudo estiver configurado corretamente, as tabelas serão criadas.
+Esse processo cria e atualiza as estruturas necessárias no banco de dados.
 
 ---
 
-# ▶️ 5. Rodar o Backend
+# ▶️ 7. Executar o Backend
 
-Dentro de:
+Dentro da pasta:
 
 ```text
 unicarona-backend
@@ -188,29 +240,27 @@ execute:
 npm run start:dev
 ```
 
-O backend ficará disponível em:
+O backend será executado na porta configurada, por padrão:
 
 ```text
 http://localhost:3000
 ```
 
-⚠️ **Importante:** `localhost` funciona apenas para a própria máquina.
-
-Quando o aplicativo for aberto em um celular físico, o celular precisa acessar o IP da máquina que está rodando o backend.
+Mantenha esse terminal aberto enquanto estiver utilizando o aplicativo.
 
 ---
 
-# 📱 6. Configurar o Mobile
+# 📱 8. Configurar o Mobile
 
-Abra outro terminal.
+Abra um **novo terminal**.
 
-Volte para a raiz:
+Volte para a raiz do projeto:
 
 ```bash
 cd ..
 ```
 
-Entre no mobile:
+Entre na pasta do aplicativo:
 
 ```bash
 cd unicarona-mobile
@@ -224,31 +274,43 @@ npm install
 
 ---
 
-# 🌐 7. Configurar o endereço do Backend
+# 🌐 9. Configurar a conexão entre o celular e o Backend
 
-Para testar pelo celular, o aplicativo não deve usar:
+Ao executar o aplicativo em um celular físico, **não utilize `localhost` para acessar o backend**.
+
+Isso acontece porque:
 
 ```text
-http://localhost:3000
+localhost
 ```
 
-O celular precisa acessar o endereço IP do computador.
+representa o próprio dispositivo que está fazendo a requisição.
 
-### Descobrir o IP do computador
+Portanto, quando o aplicativo estiver no celular, ele precisa acessar o endereço IP do computador que está executando o backend.
 
-No Windows:
+---
+
+## 9.1 Descobrir o IP do computador
+
+No Windows, execute:
 
 ```bash
 ipconfig
 ```
 
-Procure o endereço IPv4 da rede Wi-Fi, por exemplo:
+Procure pelo endereço:
 
 ```text
-IPv4 Address: 192.168.1.10
+IPv4 Address
 ```
 
-Então o endereço do backend será:
+Exemplo:
+
+```text
+192.168.1.10
+```
+
+Nesse caso, o endereço do backend será:
 
 ```text
 http://192.168.1.10:3000
@@ -256,23 +318,70 @@ http://192.168.1.10:3000
 
 ---
 
-# 🔌 8. Configurar a URL da API
+# 🔌 10. Configurar a URL da API no Mobile
 
-No projeto mobile, configure a variável:
+O aplicativo utiliza a variável:
+
+```env
+EXPO_PUBLIC_API_URL
+```
+
+Configure-a com o endereço IP do computador.
+
+Exemplo:
 
 ```env
 EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
 ```
 
-Substitua `192.168.1.10` pelo IPv4 da máquina que está rodando o backend.
+Substitua `192.168.1.10` pelo IPv4 da máquina que está executando o backend.
 
 > O computador e o celular precisam estar conectados à mesma rede.
->
-> Se estiver usando o roteador do celular, conecte o notebook e o celular à mesma rede/hotspot.
 
 ---
 
-# 🚀 9. Rodar o aplicativo
+# 📶 11. Utilizando o roteador do celular
+
+É possível utilizar o celular como ponto de acesso.
+
+Nesse cenário:
+
+1. Ative o roteador/ponto de acesso do celular.
+2. Conecte o notebook à rede criada pelo celular.
+3. Mantenha o celular conectado à própria rede.
+4. Descubra o IPv4 do notebook utilizando `ipconfig`.
+5. Configure o `EXPO_PUBLIC_API_URL` utilizando esse IP.
+6. Execute o backend no notebook.
+7. Execute o Expo.
+8. Abra o aplicativo pelo Expo Go.
+
+Exemplo:
+
+```text
+Notebook
+    │
+    │ Wi-Fi / Hotspot
+    │
+Celular
+    │
+    └── Expo Go
+```
+
+O aplicativo deverá acessar:
+
+```text
+http://IP_DO_NOTEBOOK:3000
+```
+
+e não:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# 🚀 12. Executar o aplicativo Mobile
 
 Dentro de:
 
@@ -286,91 +395,82 @@ execute:
 npx expo start
 ```
 
-Será exibido um QR Code no terminal.
+O Expo exibirá um QR Code.
 
 Abra o aplicativo **Expo Go** no celular e escaneie o QR Code.
 
 ---
 
-# 📲 10. Testando no celular
+# 🔄 13. Ordem recomendada para executar o projeto
 
-Com o backend rodando:
+Para facilitar, siga esta ordem:
+
+### Terminal 1 — Banco
+
+Na raiz:
 
 ```bash
+docker compose up -d
+```
+
+### Terminal 2 — Backend
+
+```bash
+cd unicarona-backend
+npm install
+npx prisma generate
 npm run start:dev
 ```
 
-e o Expo rodando:
+### Terminal 3 — Mobile
 
 ```bash
+cd unicarona-mobile
+npm install
 npx expo start
 ```
-
-o fluxo inicial pode ser testado:
-
-```text
-Splash
-   ↓
-Login
-   ↓
-Cadastro
-   ↓
-Verificação de e-mail
-   ↓
-Conta criada
-   ↓
-Login
-   ↓
-Perfil
-   ↓
-Cadastro de veículo
-```
-
-Também é possível testar:
-
-* Login
-* Logout
-* Recuperação de senha
-* Código de recuperação
-* Redefinição de senha
-* Cadastro de veículo
-* Atualização dos dados do veículo
 
 ---
 
 # 🔐 Autenticação
 
-O backend utiliza JWT para autenticação.
+O sistema utiliza autenticação baseada em **JWT (JSON Web Token)**.
 
-Após o login, o aplicativo recebe um token de acesso e utiliza esse token nas requisições protegidas.
-
-O cadastro inicialmente cria o usuário como:
+O fluxo de autenticação atualmente implementado é:
 
 ```text
-PASSAGEIRO
+Cadastro
+   ↓
+Verificação do e-mail
+   ↓
+Conta criada
+   ↓
+Login
+   ↓
+Token de acesso
+   ↓
+Acesso às funcionalidades protegidas
 ```
-
-Posteriormente o usuário poderá oferecer caronas e utilizar funcionalidades relacionadas a motorista.
 
 ---
 
 # 📧 Verificação de e-mail
 
-Após o cadastro, o backend envia um código de verificação.
+Após o cadastro, o usuário recebe um código de verificação.
 
 O código possui:
 
-* 6 dígitos
-* tempo de expiração configurado no `.env`
-* invalidação de códigos anteriores não utilizados
+- 6 dígitos;
+- tempo de expiração configurado no backend;
+- invalidação dos códigos anteriores não utilizados.
 
-O usuário precisa validar o e-mail antes de realizar o login.
+O usuário precisa validar o e-mail institucional antes de realizar o login.
 
 ---
 
 # 🔑 Recuperação de senha
 
-O aplicativo possui o fluxo:
+O aplicativo possui o fluxo completo de recuperação de senha:
 
 ```text
 Esqueci minha senha
@@ -379,7 +479,7 @@ Informar e-mail
         ↓
 Receber código
         ↓
-Validar código
+Informar código
         ↓
 Criar nova senha
         ↓
@@ -388,35 +488,142 @@ Login
 
 ---
 
-# 🚗 Veículo
+# 👤 Cadastro de usuário
+
+O cadastro atualmente solicita:
+
+- Nome completo
+- E-mail institucional
+- CPF
+- Curso
+- Senha
+- Aceite dos termos de uso
+
+O usuário é cadastrado inicialmente como:
+
+```text
+PASSAGEIRO
+```
+
+Posteriormente, o sistema poderá permitir que o usuário ofereça caronas e passe a atuar também como motorista.
+
+---
+
+# 🚗 Cadastro de veículo
 
 O usuário pode cadastrar seu veículo informando:
 
-* Modelo
-* Placa
-* Quantidade de vagas
+- Modelo do carro
+- Placa
+- Quantidade de vagas disponíveis
 
 Também é possível atualizar os dados do veículo posteriormente.
+
+Fluxo:
+
+```text
+Perfil
+   ↓
+Meu carro
+   ↓
+Cadastrar carro
+   ↓
+Salvar
+```
+
+Ou:
+
+```text
+Perfil
+   ↓
+Meu carro
+   ↓
+Editar
+   ↓
+Atualizar carro
+```
+
+---
+
+# 📱 Telas atuais do Mobile
+
+O aplicativo possui atualmente o seguinte fluxo inicial:
+
+```text
+Splash Screen
+      ↓
+Login
+      ↓
+ ┌────┴─────────────┐
+ ↓                  ↓
+Cadastro       Esqueci a senha
+ ↓                  ↓
+Verificação     Código
+ ↓                  ↓
+Conta criada    Nova senha
+ ↓
+Login
+ ↓
+Perfil
+ ↓
+Meu carro
+```
+
+---
+
+# 🧪 Testes recomendados
+
+Após executar o projeto, recomenda-se testar os seguintes fluxos.
+
+## Cadastro
+
+- [ ] Criar uma nova conta
+- [ ] Informar e-mail institucional
+- [ ] Receber código de verificação
+- [ ] Informar código correto
+- [ ] Testar código incorreto
+- [ ] Testar código expirado
+- [ ] Reenviar código
+- [ ] Confirmar criação da conta
+
+## Login
+
+- [ ] Login com dados corretos
+- [ ] Login com senha incorreta
+- [ ] Login com e-mail inexistente
+- [ ] Login antes da validação do e-mail
+
+## Recuperação de senha
+
+- [ ] Solicitar recuperação
+- [ ] Receber código
+- [ ] Informar código correto
+- [ ] Testar código incorreto
+- [ ] Criar nova senha
+- [ ] Realizar login com a nova senha
+
+## Veículo
+
+- [ ] Cadastrar veículo
+- [ ] Visualizar veículo
+- [ ] Atualizar modelo
+- [ ] Atualizar placa
+- [ ] Atualizar quantidade de vagas
 
 ---
 
 # ⚠️ Problemas comuns
 
-## O celular não consegue conectar ao backend
+## O aplicativo não consegue conectar ao Backend
 
 Verifique:
 
-1. Backend está rodando?
-2. Notebook e celular estão na mesma rede?
-3. A `EXPO_PUBLIC_API_URL` está usando o IP do notebook?
-4. A porta `3000` está disponível?
-5. O firewall do Windows está bloqueando o Node?
-
-Teste no navegador do celular:
-
-```text
-http://IP_DO_NOTEBOOK:3000
-```
+1. O backend está executando?
+2. O PostgreSQL está executando?
+3. O celular e o notebook estão na mesma rede?
+4. A variável `EXPO_PUBLIC_API_URL` está configurada corretamente?
+5. O IP utilizado é o IPv4 do notebook?
+6. A porta `3000` está liberada no firewall?
 
 ---
 
@@ -430,9 +637,9 @@ No celular:
 localhost
 ```
 
-significa **o próprio celular**, e não o notebook.
+aponta para o próprio celular.
 
-Use:
+Utilize:
 
 ```text
 http://IP_DO_NOTEBOOK:3000
@@ -446,7 +653,7 @@ http://192.168.1.10:3000
 
 ---
 
-## Prisma não consegue conectar ao banco
+## O banco de dados não conecta
 
 Verifique se o PostgreSQL está rodando:
 
@@ -454,9 +661,15 @@ Verifique se o PostgreSQL está rodando:
 docker ps
 ```
 
-Depois confira a `DATABASE_URL` no `.env`.
+Confira também a variável:
 
-Também tente:
+```env
+DATABASE_URL
+```
+
+no arquivo `.env`.
+
+Depois tente:
 
 ```bash
 npx prisma generate
@@ -470,26 +683,45 @@ npx prisma migrate dev
 
 ---
 
-# 🌿 Branch de integração
+## O Expo não conecta ao celular
 
-As alterações atuais estão na branch:
+Verifique se:
 
-```text
-feature/integracao-mobile-backend
-```
+- o celular e o notebook estão na mesma rede;
+- o Expo está executando;
+- o Expo Go está atualizado;
+- o firewall não está bloqueando a conexão.
 
-Para atualizar sua cópia local:
-
-```bash
-git checkout feature/integracao-mobile-backend
-git pull
-```
+Se necessário, o Expo pode ser executado utilizando uma conexão alternativa disponibilizada pelo próprio Expo.
 
 ---
 
-# 👥 Desenvolvimento em equipe
+# 🔒 Segurança
 
-Cada desenvolvedor deve trabalhar em sua própria branch.
+Os seguintes arquivos **não devem ser enviados para o Git**:
+
+```text
+.env
+node_modules/
+```
+
+O arquivo `.env` pode conter informações sensíveis e configurações específicas da máquina.
+
+Cada desenvolvedor deve criar seu próprio `.env` utilizando:
+
+```text
+.env.example
+```
+
+como referência.
+
+---
+
+# 🌿 Fluxo de desenvolvimento com Git
+
+Evite realizar alterações diretamente na `main`.
+
+Crie uma branch para cada funcionalidade.
 
 Exemplo:
 
@@ -500,83 +732,136 @@ main
         │
         ├── feature/nova-tela
         ├── feature/caronas
-        └── feature/perfil
+        ├── feature/perfil
+        └── feature/avaliacoes
 ```
 
-Evite trabalhar diretamente na `main`.
+Para atualizar sua branch:
+
+```bash
+git checkout feature/integracao-mobile-backend
+git pull
+```
 
 ---
 
-# 🔒 Arquivos que NÃO devem ser enviados
+# 📦 Comandos principais
 
-Não faça commit de:
+## Banco de dados
 
-```text
-.env
-node_modules/
-```
-
-O arquivo `.env` contém configurações locais e deve ser criado individualmente por cada desenvolvedor.
-
-Utilize:
-
-```text
-.env.example
-```
-
-como referência.
-
----
-
-# 💡 Comandos rápidos
-
-### Backend
-
-```bash
-cd unicarona-backend
-npm install
-npx prisma generate
-npx prisma migrate dev
-npm run start:dev
-```
-
-### Mobile
-
-Em outro terminal:
-
-```bash
-cd unicarona-mobile
-npm install
-npx expo start
-```
-
-### Banco
-
-Na raiz:
+Iniciar:
 
 ```bash
 docker compose up -d
 ```
 
-Para parar:
+Parar:
 
 ```bash
 docker compose down
 ```
 
+Ver containers:
+
+```bash
+docker ps
+```
+
 ---
 
-# 🚗 UniCarona
+## Backend
 
-Projeto acadêmico desenvolvido para a comunidade universitária, com foco em compartilhamento de caronas, mobilidade e colaboração entre estudantes.
+Instalar dependências:
 
+```bash
+cd unicarona-backend
+npm install
 ```
 
-### ⚠️ Só faria uma alteração antes de você colocar esse README
+Gerar Prisma Client:
 
-Eu **não colocaria uma `DATABASE_URL` real** no README. Cada amigo deve colocar a própria configuração no `.env`.
-
-E tem uma coisa importante: **o README precisa bater exatamente com o `docker-compose.yml` e o `.env.example` que estão na branch**. Como vocês acabaram de alterar a estrutura do projeto, vale conferir esses dois arquivos antes de você commitar o README.
-
-Se quiser, me mande o conteúdo do **`docker-compose.yml` e `.env.example`** (ou os arquivos) e eu ajusto o README para ficar **100% copiável pelos seus amigos, sem eles terem que adivinhar usuário, senha, porta ou nome do banco**.
+```bash
+npx prisma generate
 ```
+
+Executar migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+Executar servidor:
+
+```bash
+npm run start:dev
+```
+
+---
+
+## Mobile
+
+Instalar dependências:
+
+```bash
+cd unicarona-mobile
+npm install
+```
+
+Executar Expo:
+
+```bash
+npx expo start
+```
+
+---
+
+# 🤝 Desenvolvimento em equipe
+
+Ao desenvolver uma nova funcionalidade:
+
+1. Atualize sua branch.
+2. Crie uma nova branch de funcionalidade.
+3. Desenvolva e teste localmente.
+4. Faça o commit das alterações.
+5. Envie a branch para o GitHub.
+6. Abra um Pull Request.
+7. Após revisão, realize a integração com a branch principal.
+
+Exemplo:
+
+```bash
+git checkout feature/integracao-mobile-backend
+git pull
+
+git checkout -b feature/nova-funcionalidade
+```
+
+Após finalizar:
+
+```bash
+git add .
+git commit -m "feat: adiciona nova funcionalidade"
+git push -u origin feature/nova-funcionalidade
+```
+
+---
+
+# 📌 Branch atual
+
+A versão deste README corresponde à branch:
+
+```text
+feature/integracao-mobile-backend
+```
+
+Esta branch contém a integração atual entre o aplicativo mobile e o backend, incluindo os fluxos de autenticação, verificação de e-mail, recuperação de senha e gerenciamento de veículo.
+
+---
+
+# 👥 Equipe
+
+Projeto acadêmico desenvolvido por estudantes de Engenharia de Software.
+
+## UniCarona
+
+**Compartilhe o caminho. Conecte sua universidade.** 🚗
