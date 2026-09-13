@@ -8,6 +8,10 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { EmailVerificationService } from './services/email-verification.service';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyPasswordResetDto } from './dto/verify-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 
 @Injectable()
 export class AuthService {
@@ -176,4 +180,99 @@ export class AuthService {
       throw new BadRequestException('A senha deve conter pelo menos uma letra e um número.');
     }
   }
+  async forgotPassword(dto: ForgotPasswordDto) {
+  const email = this.normalizeEmail(dto.email);
+
+  this.validateEmail(email);
+
+  const usuario = await this.usuarioService.findByEmail(email);
+
+  if (!usuario) {
+    throw new BadRequestException('E-mail não encontrado.');
+  }
+
+  await this.emailVerificationService.createAndSend(
+    usuario.id,
+    usuario.email,
+  );
+
+  return {
+    message: 'Código de recuperação enviado para seu e-mail institucional.',
+  };
+}
+async verifyPasswordReset(dto: VerifyPasswordResetDto) {
+  const email = this.normalizeEmail(dto.email);
+  const codigo = String(dto.codigo ?? '').trim();
+
+  this.validateEmail(email);
+
+  const usuario = await this.usuarioService.findByEmail(email);
+
+  if (!usuario) {
+    throw new BadRequestException('E-mail não encontrado.');
+  }
+
+  const valid = await this.emailVerificationService.verifyCode(
+    usuario.id,
+    codigo,
+  );
+
+  if (!valid) {
+    throw new BadRequestException('Código inválido ou expirado.');
+  }
+
+  return {
+    message: 'Código validado com sucesso.',
+  };
+}
+async resetPassword(dto: ResetPasswordDto) {
+  const email = this.normalizeEmail(dto.email);
+  const codigo = String(dto.codigo ?? '').trim();
+  const novaSenha = String(dto.novaSenha ?? '');
+
+  this.validateEmail(email);
+  this.validatePassword(novaSenha);
+
+  const usuario = await this.usuarioService.findByEmail(email);
+
+  if (!usuario) {
+    throw new BadRequestException('E-mail não encontrado.');
+  }
+
+  const valid = await this.emailVerificationService.verifyCode(
+    usuario.id,
+    codigo,
+  );
+
+  if (!valid) {
+    throw new BadRequestException('Código inválido ou expirado.');
+  }
+
+  const senhaHash = await this.passwordService.hash(novaSenha);
+
+  await this.prisma.$transaction([
+    this.prisma.codigoVerificacaoEmail.updateMany({
+      where: {
+        usuarioId: usuario.id,
+        usado: false,
+      },
+      data: {
+        usado: true,
+      },
+    }),
+
+    this.prisma.usuario.update({
+      where: {
+        id: usuario.id,
+      },
+      data: {
+        senhaHash,
+      },
+    }),
+  ]);
+
+  return {
+    message: 'Senha redefinida com sucesso.',
+  };
+}
 }
