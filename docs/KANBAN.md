@@ -17,7 +17,7 @@ Quadro de fluxo contínuo (Kanban) e Roadmap de desenvolvimento do sistema de ca
 | :--- | :--- | :---: | :---: |
 | **M1: Autenticação & Usuários** | Cadastro institucional (`@a.ucb.br`), tokens JWT e validação | @Guilherme / @Vinicius | **Concluído** ✅ |
 | **M2: Gestão de Veículos** | Cadastro de veículos, placas e capacidade (1 a 4 vagas) | Equipe | **Concluído** ✅ |
-| **M3: Trajetos & Rotas** | Modelagem de rotas, pontos de partida/destino e trajeto | @Grazielly Sabino  | **Concluído** ✅ |
+| **M3: Trajetos & Rotas** | Modelagem de rotas, pontos de partida/destino e trajeto | @Grazielly Sabino  | **Em Andamento** 🚧 |
 | **M4: Matching & Ciclo de Caronas** | Consultas espaciais (PostGIS), reserva de vagas, aceite/recusa | Equipe | **Em Andamento** 🚧 |
 | **M5: Viagem & Avaliações** | Finalização de percurso, notas mútuas e histórico imutável | Equipe | **A Fazer** 📝 |
 
