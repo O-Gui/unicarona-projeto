@@ -6,7 +6,7 @@ Quadro de fluxo contínuo (Kanban) e Roadmap de desenvolvimento do sistema de ca
 
 ## 👥 Atribuições da Equipe
 * **Back-end & Geoprocessamento (PostGIS / Prisma):** @Guilherme Basilio
-* **Front-end Mobile (React Native):** @Vinicius
+* **Front-end Mobile (React Native):** @Vinicius /  @Grazielly Sabino
 * **Requisitos, Documentação & QA:** @Grazielly Sabino
 
 ---
