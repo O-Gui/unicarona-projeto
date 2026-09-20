@@ -44,4 +44,49 @@ export class EmailVerificationService {
 
     return true;
   }
+  async verifyCode(userId: string, codigo: string): Promise<boolean> {
+  const codigoHash = createHash('sha256').update(codigo).digest('hex');
+
+  const record = await this.prisma.codigoVerificacaoEmail.findFirst({
+    where: {
+      usuarioId: userId,
+      codigoHash,
+      usado: false,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  if (!record || record.expiresAt < new Date()) {
+    return false;
+  }
+
+  return true;
+}
+async consumeCode(userId: string, codigo: string): Promise<boolean> {
+  const codigoHash = createHash('sha256').update(codigo).digest('hex');
+
+  const record = await this.prisma.codigoVerificacaoEmail.findFirst({
+    where: {
+      usuarioId: userId,
+      codigoHash,
+      usado: false,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  if (!record || record.expiresAt < new Date()) {
+    return false;
+  }
+
+  await this.prisma.codigoVerificacaoEmail.update({
+    where: { id: record.id },
+    data: { usado: true },
+  });
+
+  return true;
+}
 }

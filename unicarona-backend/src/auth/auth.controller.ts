@@ -7,6 +7,10 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtPayload } from './services/token.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyPasswordResetDto } from './dto/verify-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 
 @Controller('auth')
 export class AuthController {
@@ -37,4 +41,19 @@ export class AuthController {
   me(@Req() req: Request & { user: JwtPayload }) {
     return this.authService.me(req.user.sub);
   }
+
+  @Post('forgot-password')
+forgotPassword(@Body() dto: ForgotPasswordDto) {
+  return this.authService.forgotPassword(dto);
+}
+
+@Post('verify-password-reset')
+verifyPasswordReset(@Body() dto: VerifyPasswordResetDto) {
+  return this.authService.verifyPasswordReset(dto);
+}
+
+@Post('reset-password')
+resetPassword(@Body() dto: ResetPasswordDto) {
+  return this.authService.resetPassword(dto);
+}
 }
