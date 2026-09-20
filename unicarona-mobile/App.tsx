@@ -52,7 +52,8 @@ const COLORS = {
   success: '#2F855A',
 };
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+// Como está agora (com aspas duplicadas):
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.2:3000';
 
 function friendlyErrorMessage(message: unknown, fallback: string) {
   const raw = Array.isArray(message) ? message.join(' ') : String(message ?? '');
