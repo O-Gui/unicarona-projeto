@@ -1,4 +1,22 @@
 # UniCarona 🚗
+---
+# Como Rodar o UniCarona 
+## 1. Iniciar os Serviços no Docker
+cd unicarona-projeto e depois docker-compose up -d
+
+## 2. Configurar a Base de Dados com o Prisma
+cd unicarona-backend, e depois npx prisma generate e npx prisma migrate dev
+
+## 3. Iniciar o Backend
+cd unicarona-backend npm run start:dev
+
+## 4. Iniciar o Aplicativo Móvel (Expo) - Em outro terminal
+Iniciar o mobile usando o Expo, digite cd unicarona-mobile e depois npx expo start
+
+## 5. Visualizar a Base de Dados (Prisma Studio) - Em outro terminal se desejar
+(prisma no navegador) cd unicarona-backend e depois npx prisma studio
+
+---
 
 Sistema de compartilhamento de caronas desenvolvido para a comunidade universitária.
 
