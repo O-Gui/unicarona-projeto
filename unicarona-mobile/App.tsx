@@ -1,3 +1,7 @@
+import { CarScreen, type Car as CarType } from './screens/CarScreen';
+import { HomeScreen } from './screens/HomeScreen';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { ProfileScreen } from './screens/ProfileScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -7,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,7 +27,8 @@ type Screen =
   | 'verifyPasswordReset'
   | 'resetPassword'
   | 'profile'
-  | 'car';
+  | 'car'
+  | 'home';
 type Profile = 'PASSAGEIRO' | 'MOTORISTA' | 'AMBOS';
 type User = {
   id: string;
@@ -104,7 +108,7 @@ export default function App() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [resetCode, setResetCode] = useState('');
-  const [car, setCar] = useState<Car | null>(null);
+  const [car, setCar] = useState<any>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -171,6 +175,7 @@ export default function App() {
   }
 
   return (
+    <SafeAreaProvider>
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -221,26 +226,41 @@ export default function App() {
         />
       )}
         
-        {screen === 'profile' && user && (
-          <ProfileScreen
-            user={user}
-            car={car}
-            onNavigate={setScreen}
-            onLogout={handleLogout}
-          />
-        )}
-        {screen === 'car' && user && (
-          <CarScreen
-            existingCar={car}
-            onBack={() => setScreen('profile')}
-            onSaved={saveCar}
-          />
-        )}
+ {screen === 'home' && (
+  <HomeScreen
+    user={user}
+    onNavigate={(nextScreen) => setScreen(nextScreen as any)}
+  />
+)}
+
+{screen === 'profile' && (
+  <ProfileScreen
+    user={user}
+    onBack={() => setScreen('home')}
+    onNavigateToCar={() => setScreen('car')}
+    onLogout={() => {
+      setUser(null);
+      setScreen('login');
+    }}
+  />
+
+)}
+        
+     {screen === 'car' && (
+  <CarScreen
+    existingCar={car}
+    onBack={() => setScreen('profile')}
+    onSaved={async (newCar) => {
+      setCar(newCar);
+      setScreen('profile');
+    }}
+  />
+)}
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
-
 function BrandHeader({ compact = false }: { compact?: boolean }) {
   return (
     <View style={[styles.brandHeader, compact && styles.brandHeaderCompact]}>
@@ -1173,191 +1193,7 @@ function VerifyEmailScreen({
   );
 }
 
-function ProfileScreen({
-  user,
-  car,
-  onNavigate,
-  onLogout,
-}: {
-  user: User;
-  car: Car | null;
-  onNavigate: (screen: Screen) => void;
-  onLogout: () => void;
-}) {
-  const firstName = useMemo(() => user.nome.trim().split(/\s+/)[0] || 'Usuário', [user.nome]);
-  const roleLabel = user.perfil === 'AMBOS' ? 'Passageiro e motorista' : user.perfil === 'MOTORISTA' ? 'Motorista' : 'Passageiro';
 
-  return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-      <View style={styles.pageHeader}>
-        <BrandHeader compact />
-        <Pressable style={styles.headerIcon} onPress={() => Alert.alert('Notificações', 'Você está em dia!')}>
-          <Ionicons name="notifications-outline" size={23} color={COLORS.white} />
-        </Pressable>
-      </View>
-
-      <View style={styles.profileHero}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{firstName.slice(0, 1).toUpperCase()}</Text>
-        </View>
-        <View style={styles.profileIdentity}>
-          <Text style={styles.greeting}>Olá, {firstName}!</Text>
-          <Text style={styles.profileRole}>{roleLabel}</Text>
-          <Text style={styles.profileEmail}>{user.email}</Text>
-        </View>
-      </View>
-
-      <View style={styles.statsRow}>
-        <Stat value="0" label="Caronas" />
-        <Stat value="0" label="Avaliação" />
-        <Stat value="0 kg" label="CO₂ evitado" />
-      </View>
-
-      <Text style={styles.sectionTitle}>Seu perfil</Text>
-
-      <View style={styles.menuCard}>
-        <MenuItem
-          icon="person-outline"
-          title="Dados pessoais"
-          subtitle="Nome, e-mail e CPF"
-          onPress={() => Alert.alert('Dados pessoais', `${user.nome}\n${user.email}\nCPF: ${user.cpf}`)}
-        />
-        <MenuItem
-          icon="car-outline"
-          title="Meu carro"
-          subtitle={car ? `${car.model} • ${car.capacity} vaga${car.capacity === 1 ? '' : 's'}` : 'Nenhum veículo cadastrado'}
-          onPress={() => onNavigate('car')}
-        />
-        <MenuItem
-          icon="shield-checkmark-outline"
-          title="E-mail verificado"
-          subtitle={user.emailValidado ? 'Sua conta está protegida' : 'E-mail ainda não validado'}
-          onPress={() => Alert.alert('Verificação', user.emailValidado ? 'E-mail institucional validado.' : 'Valide seu e-mail institucional para continuar.')}
-        />
-      </View>
-
-      {car && (
-        <View style={styles.carSummary}>
-          <View style={styles.carSummaryIcon}>
-            <Ionicons name="car-sport" size={24} color={COLORS.orange} />
-          </View>
-          <View style={styles.carSummaryCopy}>
-            <Text style={styles.carSummaryTitle}>{car.model}</Text>
-            <Text style={styles.carSummaryText}>Placa {car.plate} • {car.capacity} vaga{car.capacity === 1 ? '' : 's'} disponível{car.capacity === 1 ? '' : 'is'}</Text>
-          </View>
-          <Pressable onPress={() => onNavigate('car')}>
-            <Text style={styles.editCar}>Editar</Text>
-          </Pressable>
-        </View>
-      )}
-
-      <PrimaryButton label={car ? 'Editar meu carro' : 'Cadastrar meu carro'} onPress={() => onNavigate('car')} />
-
-      <Pressable style={styles.logout} onPress={onLogout}>
-        <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-function CarScreen({
-  existingCar,
-  onBack,
-  onSaved,
-}: {
-  existingCar: Car | null;
-  onBack: () => void;
-  onSaved: (car: Car) => Promise<void>;
-}) {
-  const [plate, setPlate] = useState(existingCar?.plate ?? '');
-  const [capacity, setCapacity] = useState(existingCar ? String(existingCar.capacity) : '');
-  const [model, setModel] = useState(existingCar?.model ?? '');
-  const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    const cleanPlate = plate.trim().toUpperCase();
-    const seats = Number(capacity);
-
-    if (!cleanPlate || !capacity.trim() || !model.trim()) {
-      Alert.alert('Complete o cadastro', 'Informe modelo, placa e quantidade de vagas.');
-      return;
-    }
-
-    if (!Number.isInteger(seats) || seats < 1 || seats > 4) {
-      Alert.alert('Vagas inválidas', 'Informe uma quantidade entre 1 e 4 vagas.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await onSaved({ model: model.trim(), plate: cleanPlate, capacity: seats });
-    } catch {
-      Alert.alert('Não foi possível salvar', 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
-      <View style={styles.pageHeader}>
-        <Pressable onPress={onBack} style={styles.headerIcon}>
-          <Ionicons name="arrow-back" size={23} color={COLORS.white} />
-        </Pressable>
-        <BrandHeader compact />
-        <View style={{ width: 40 }} />
-      </View>
-
-      <View style={styles.formIntro}>
-        <View style={styles.orangeIcon}>
-          <Ionicons name="car-sport" size={30} color={COLORS.orange} />
-        </View>
-        <Text style={styles.title}>{existingCar ? 'Meu carro' : 'Cadastre seu carro'}</Text>
-        <Text style={styles.subtitle}>
-          {existingCar ? 'Confira ou altere os dados do seu veículo.' : 'Compartilhe o caminho e ajude mais pessoas a chegar.'}
-        </Text>
-      </View>
-
-      {existingCar && (
-        <View style={styles.savedBanner}>
-          <Ionicons name="checkmark-circle" size={21} color={COLORS.success} />
-          <View style={styles.savedBannerCopy}>
-            <Text style={styles.savedBannerTitle}>Veículo cadastrado</Text>
-            <Text style={styles.savedBannerText}>Os dados abaixo estão salvos neste dispositivo.</Text>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.formCard}>
-        <Field label="Modelo do carro" value={model} onChangeText={setModel} placeholder="Ex.: Honda Civic" icon="car-outline" />
-        <Field
-          label="Placa"
-          value={plate}
-          onChangeText={(value: string) => setPlate(value.toUpperCase())}
-          placeholder="ABC-1D23"
-          autoCapitalize="characters"
-          icon="card-outline"
-        />
-        <Field
-          label="Vagas disponíveis"
-          value={capacity}
-          onChangeText={(value: string) => setCapacity(value.replace(/\D/g, '').slice(0, 1))}
-          placeholder="Até 4 passageiros"
-          keyboardType="number-pad"
-          icon="people-outline"
-        />
-
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={20} color={COLORS.navyLight} />
-          <Text style={styles.infoText}>A placa será usada apenas para identificação durante a carona. Seus dados ficam protegidos.</Text>
-        </View>
-
-        <PrimaryButton label={saving ? 'Salvando...' : existingCar ? 'Atualizar carro' : 'Salvar carro'} onPress={submit} disabled={saving} />
-      </View>
-    </ScrollView>
-  );
-}
 
 function Field({ label, value, onChangeText, placeholder, icon, rightIcon, onRightIconPress, ...props }: any) {
   return (
