@@ -246,13 +246,32 @@ export default function App() {
 
 )}
         
-     {screen === 'car' && (
+{screen === 'car' && (
   <CarScreen
     existingCar={car}
     onBack={() => setScreen('profile')}
     onSaved={async (newCar) => {
-      setCar(newCar);
-      setScreen('profile');
+      try {
+        const response = await fetch('http://localhost:3000/veiculos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuarioId: user?.id, // ID do utilizador logado atualmente
+            modelo: newCar.model,
+            placa: newCar.plate,
+            capacidade: newCar.capacity,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Erro ao salvar no servidor');
+
+        const data = await response.json();
+        setCar(data);
+        setScreen('profile');
+      } catch (error) {
+        console.error(error);
+        alert('Erro ao guardar o veículo na base de dados.');
+      }
     }}
   />
 )}
