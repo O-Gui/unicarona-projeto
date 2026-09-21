@@ -1,392 +1,296 @@
 import React from 'react';
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, MapPin, Users, Clock } from 'lucide-react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Avatar, Card, EmptyState, Loading, SectionTitle } from '../components/ui';
+import { Icon, NomeIcone } from '../components/Icon';
+import { CaronaCard } from './CaronaCard';
+import { colors, radius, spacing, tints, typography } from '../theme';
+import { formatarMoeda, primeiroNome } from '../lib/format';
+import { caronaService, notificacaoService, usuarioService } from '../lib/servicos';
+import { useCarregar } from '../lib/useCarregar';
+import { useNavigation } from '../state/NavigationContext';
+import { useAuth } from '../state/AuthContext';
 
-const colors = {
-  navy: '#1e2a4a',
-  orange: '#ff7a1a',
-  background: '#f8f9fb',
-  card: '#ffffff',
-  border: '#e5e7eb',
-  mutedForeground: '#6b7280',
-  white: '#ffffff',
-};
+export function HomeScreen() {
+  const { navegar } = useNavigation();
+  const { usuario } = useAuth();
 
-type Ride = {
-  driver: string;
-  from: string;
-  to: string;
-  time: string;
-  seats: number;
-  price: string;
-};
+  const painel = useCarregar(async () => {
+    const [minhas, estatisticas, sugestoes, notificacoes] = await Promise.all([
+      caronaService.minhas(),
+      usuarioService.estatisticas(),
+      caronaService.buscar({}),
+      notificacaoService.naoLidas(),
+    ]);
+    return { minhas, estatisticas, sugestoes, naoLidas: notificacoes.total };
+  }, []);
 
-const upcomingRides: Ride[] = [
-  {
-    driver: 'Maria Silva',
-    from: 'Centro',
-    to: 'Campus Norte',
-    time: '08:30',
-    seats: 2,
-    price: 'R$ 5,00',
-  },
-  {
-    driver: 'João Santos',
-    from: 'Zona Sul',
-    to: 'Campus Principal',
-    time: '14:00',
-    seats: 3,
-    price: 'R$ 7,00',
-  },
-];
-
-export function HomeScreen({
-  user,
-  onNavigate,
-}: {
-  user: any;
-  onNavigate: (screen: string) => void;
-}) {
-  const insets = useSafeAreaInsets();
+  const proximas = painel.dados
+    ? [...painel.dados.minhas.reservadas, ...painel.dados.minhas.oferecidas].slice(0, 3)
+    : [];
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.navy} />
-
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.headerRow}>
+    <ScrollView
+      style={estilos.tela}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={painel.carregando} onRefresh={painel.recarregar} tintColor={colors.orange} />
+      }
+    >
+      <View style={estilos.cabecalho}>
+        <View style={estilos.cabecalhoLinha}>
           <View>
-            <Text style={styles.greeting}>Olá,</Text>
-            <Text style={styles.userName}>{user?.nome || 'Usuário'}</Text>
+            <Text style={estilos.saudacaoLabel}>Olá,</Text>
+            <Text style={estilos.saudacaoNome}>{primeiroNome(usuario?.nome) || 'estudante'}</Text>
           </View>
-          <Pressable
-            onPress={() => onNavigate('profile')}
-            style={styles.avatarButton}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir perfil"
-          >
-            <Text style={styles.avatarText}>
-              {user?.nome ? user.nome[0].toUpperCase() : 'U'}
-            </Text>
-          </Pressable>
-        </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Search size={20} color={colors.mutedForeground} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Para onde você vai?"
-            placeholderTextColor={colors.mutedForeground}
-            returnKeyType="search"
-          />
-        </View>
-      </View>
+          <View style={estilos.cabecalhoAcoes}>
+            <Pressable onPress={() => navegar('notifications')} hitSlop={8} style={estilos.sino}>
+              <Icon name="bell" size={22} color={colors.white} />
+              {painel.dados && painel.dados.naoLidas > 0 ? <View style={estilos.pontoAviso} /> : null}
+            </Pressable>
 
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Quick Actions */}
-        <View style={styles.actionsRow}>
-          <Pressable
-            onPress={() => onNavigate('find-ride')}
-            style={[styles.actionButton, { backgroundColor: colors.orange }]}
-            accessibilityRole="button"
-          >
-            <MapPin size={24} color={colors.white} />
-            <Text style={styles.actionLabel}>Buscar Carona</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => onNavigate('offer-ride')}
-            style={[styles.actionButton, { backgroundColor: colors.navy }]}
-            accessibilityRole="button"
-          >
-            <Users size={24} color={colors.white} />
-            <Text style={styles.actionLabel}>Oferecer Carona</Text>
-          </Pressable>
-        </View>
-
-        {/* Upcoming Rides */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Rotas recentes</Text>
-            <Pressable hitSlop={8} accessibilityRole="button">
-              <Text style={styles.seeAll}>Ver todas</Text>
+            <Pressable onPress={() => navegar('profile')}>
+              <Avatar nome={usuario?.nome} tamanho={46} />
             </Pressable>
           </View>
-
-          <View style={styles.ridesList}>
-            {upcomingRides.map((ride) => (
-              <Pressable
-                key={`${ride.driver}-${ride.time}`}
-                onPress={() => onNavigate('ride-details')}
-                style={({ pressed }) => [
-                  styles.rideCard,
-                  pressed && styles.rideCardPressed,
-                ]}
-                accessibilityRole="button"
-              >
-                <View style={styles.rideTop}>
-                  <View style={styles.driverRow}>
-                    <View style={styles.driverAvatar}>
-                      <Text style={styles.driverInitial}>{ride.driver[0]}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.driverName}>{ride.driver}</Text>
-                      <View style={styles.timeRow}>
-                        <Clock size={12} color={colors.mutedForeground} />
-                        <Text style={styles.smallMuted}>{ride.time}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={styles.price}>{ride.price}</Text>
-                </View>
-
-                <View style={styles.routeRow}>
-                  <View style={styles.routeFrom}>
-                    <View style={styles.routeDot} />
-                    <Text style={styles.routeText} numberOfLines={1}>
-                      {ride.from}
-                    </Text>
-                  </View>
-                  <View style={styles.routeLine} />
-                  <View style={styles.routeTo}>
-                    <MapPin size={14} color={colors.navy} />
-                    <Text style={styles.routeText} numberOfLines={1}>
-                      {ride.to}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.seatsRow}>
-                  <Users size={12} color={colors.mutedForeground} />
-                  <Text style={styles.smallMuted}>
-                    {ride.seats} vagas disponíveis
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
         </View>
-      </ScrollView>
+
+        <Pressable style={estilos.busca} onPress={() => navegar('find-ride')}>
+          <Icon name="search" size={19} color={colors.mutedForeground} />
+          <Text style={estilos.buscaTexto}>Para onde você vai?</Text>
+        </Pressable>
+      </View>
+
+      <View style={estilos.corpo}>
+        <View style={estilos.acoes}>
+          <AcaoRapida
+            titulo="Buscar carona"
+            icone="map-pin"
+            cor={colors.orange}
+            onPress={() => navegar('find-ride')}
+          />
+          <AcaoRapida
+            titulo="Oferecer carona"
+            icone="users"
+            cor={colors.navy}
+            onPress={() => navegar('offer-ride')}
+          />
+        </View>
+
+        <View style={estilos.atalhos}>
+          <Atalho titulo="Agendar" icone="calendar" onPress={() => navegar('schedule-ride')} />
+          <Atalho titulo="Grupos" icone="users" onPress={() => navegar('group-ride')} />
+          <Atalho titulo="Mapa" icone="map-pin" onPress={() => navegar('campus-map')} />
+          <Atalho titulo="Emergência" icone="shield" cor={colors.destructive} onPress={() => navegar('emergency')} />
+        </View>
+
+        {painel.carregando && !painel.dados ? (
+          <Loading texto="Carregando suas caronas..." />
+        ) : (
+          <>
+            {painel.dados ? (
+              <View style={estilos.estatisticas}>
+                <MiniEstatistica
+                  valor={String(painel.dados.estatisticas.totalViagens)}
+                  label="Viagens"
+                  icone="trending-up"
+                  cor={colors.orange}
+                />
+                <MiniEstatistica
+                  valor={formatarMoeda(painel.dados.estatisticas.totalGanho)}
+                  label="Recebido"
+                  icone="dollar-sign"
+                  cor={colors.navy}
+                />
+                <MiniEstatistica
+                  valor={`${painel.dados.estatisticas.co2EvitadoKg} kg`}
+                  label="CO₂ evitado"
+                  icone="leaf"
+                  cor={colors.success}
+                />
+              </View>
+            ) : null}
+
+            <View style={estilos.secao}>
+              <SectionTitle acao="Ver todas" onAcao={() => navegar('history')}>
+                Suas próximas caronas
+              </SectionTitle>
+
+              {proximas.length === 0 ? (
+                <Card>
+                  <EmptyState
+                    icone="calendar"
+                    titulo="Nenhuma carona marcada"
+                    descricao="Busque uma carona para o campus ou ofereça a sua."
+                    acao="Buscar carona"
+                    onAcao={() => navegar('find-ride')}
+                  />
+                </Card>
+              ) : (
+                <View style={estilos.lista}>
+                  {proximas.map((carona) => (
+                    <CaronaCard
+                      key={carona.id}
+                      carona={carona}
+                      compacto
+                      onPress={() => navegar('ride-details', { caronaId: carona.id })}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {painel.dados && painel.dados.sugestoes.length > 0 ? (
+              <View style={estilos.secao}>
+                <SectionTitle acao="Ver mais" onAcao={() => navegar('find-ride')}>
+                  Caronas disponíveis agora
+                </SectionTitle>
+                <View style={estilos.lista}>
+                  {painel.dados.sugestoes.slice(0, 3).map((carona) => (
+                    <CaronaCard
+                      key={carona.id}
+                      carona={carona}
+                      compacto
+                      onPress={() => navegar('ride-details', { caronaId: carona.id })}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+function AcaoRapida({
+  titulo,
+  icone,
+  cor,
+  onPress,
+}: {
+  titulo: string;
+  icone: NomeIcone;
+  cor: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [estilos.acao, { backgroundColor: cor }, pressed && { opacity: 0.88 }]}
+    >
+      <Icon name={icone} size={24} color={colors.white} />
+      <Text style={estilos.acaoTexto}>{titulo}</Text>
+    </Pressable>
+  );
+}
+
+function Atalho({
+  titulo,
+  icone,
+  cor = colors.navy,
+  onPress,
+}: {
+  titulo: string;
+  icone: NomeIcone;
+  cor?: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={estilos.atalho}>
+      <View style={[estilos.atalhoIcone, { backgroundColor: `${cor}1A` }]}>
+        <Icon name={icone} size={19} color={cor} />
+      </View>
+      <Text style={estilos.atalhoTexto}>{titulo}</Text>
+    </Pressable>
+  );
+}
+
+function MiniEstatistica({
+  valor,
+  label,
+  icone,
+  cor,
+}: {
+  valor: string;
+  label: string;
+  icone: NomeIcone;
+  cor: string;
+}) {
+  return (
+    <View style={estilos.mini}>
+      <Icon name={icone} size={17} color={cor} />
+      <Text style={estilos.miniValor} numberOfLines={1}>
+        {valor}
+      </Text>
+      <Text style={estilos.miniLabel}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
+const estilos = StyleSheet.create({
+  tela: { flex: 1, backgroundColor: colors.background },
+
+  cabecalho: {
     backgroundColor: colors.navy,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
   },
-  headerRow: {
+  cabecalhoLinha: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
-  greeting: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-  },
-  userName: {
-    color: colors.white,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  avatarButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  sino: { padding: 4 },
+  pontoAviso: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  avatarText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  saudacaoLabel: { ...typography.small, color: tints.onNavyText },
+  saudacaoNome: { ...typography.h2, color: colors.white },
+
+  busca: {
     backgroundColor: colors.white,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: { elevation: 6 },
-    }),
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
-  searchInput: {
+  buscaTexto: { ...typography.small, color: colors.mutedForeground },
+
+  corpo: { padding: spacing.xl, gap: spacing.xl },
+
+  acoes: { flexDirection: 'row', gap: spacing.md },
+  acao: { flex: 1, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
+  acaoTexto: { ...typography.smallMedium, color: colors.white },
+
+  atalhos: { flexDirection: 'row', justifyContent: 'space-between' },
+  atalho: { alignItems: 'center', gap: spacing.xs, flex: 1 },
+  atalhoIcone: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  atalhoTexto: { ...typography.caption, color: colors.navy, fontWeight: '600' },
+
+  estatisticas: { flexDirection: 'row', gap: spacing.md },
+  mini: {
     flex: 1,
-    fontSize: 14,
-    color: colors.navy,
-    padding: 0,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: 2,
   },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    color: colors.navy,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  seeAll: {
-    color: colors.orange,
-    fontSize: 14,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  actionButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  actionLabel: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  ridesList: {
-    gap: 12,
-  },
-  rideCard: {
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rideCardPressed: {
-    opacity: 0.85,
-  },
-  rideTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  driverRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  driverAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  driverInitial: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  driverName: {
-    color: colors.navy,
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  price: {
-    color: colors.orange,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  smallMuted: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-  },
-  routeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  routeFrom: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  routeTo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-  },
-  routeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.orange,
-  },
-  routeLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-  routeText: {
-    flexShrink: 1,
-    color: colors.mutedForeground,
-    fontSize: 14,
-  },
-  seatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
+  miniValor: { ...typography.smallMedium, color: colors.navy, marginTop: spacing.xs },
+  miniLabel: { ...typography.caption, color: colors.mutedForeground },
+
+  secao: { gap: spacing.sm },
+  lista: { gap: spacing.md },
 });

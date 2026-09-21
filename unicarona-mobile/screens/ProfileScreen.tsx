@@ -1,604 +1,322 @@
 import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  KeyboardAvoidingView,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  ArrowLeft,
-  Star,
-  MapPin,
-  Calendar,
-  Edit,
-  Check,
-  type LucideIcon,
-} from 'lucide-react-native';
+  Avatar,
+  Button,
+  Card,
+  ErrorState,
+  Field,
+  Header,
+  Loading,
+  Screen,
+  SectionTitle,
+  StatCard,
+  StarRating,
+  TextArea,
+} from '../components/ui';
+import { Icon } from '../components/Icon';
+import { colors, radius, spacing, tints, typography } from '../theme';
+import { formatarData, mascaras } from '../lib/format';
+import { usuarioService } from '../lib/servicos';
+import { useCarregar } from '../lib/useCarregar';
+import { useAuth } from '../state/AuthContext';
+import { useNavigation } from '../state/NavigationContext';
 
-const colors = {
-  navy: '#1e2a4a',
-  orange: '#ff7a1a',
-  background: '#f8f9fb',
-  card: '#ffffff',
-  border: '#e5e7eb',
-  muted: '#f1f3f6',
-  mutedForeground: '#6b7280',
-  white: '#ffffff',
-  green: '#10b981',
-};
+/**
+ * UC — Perfil. Mostra GET /usuarios/me e, no modo edição, envia PATCH
+ * /usuarios/me. As avaliações vêm de GET /usuarios/:id/avaliacoes.
+ */
 
-type Stat = { label: string; value: string; icon: LucideIcon };
-type Badge = { name: string; icon: string; color: string };
-type Review = {
-  name: string;
-  rating: number;
-  comment: string;
-  date: string;
-};
-
-const stats: Stat[] = [
-  { label: 'Caronas Oferecidas', value: '24', icon: MapPin },
-  { label: 'Caronas Recebidas', value: '18', icon: Calendar },
-  { label: 'Avaliação Média', value: '4.9', icon: Star },
+const PREFERENCIAS_DISPONIVEIS = [
+  'Música ambiente',
+  'Pontual',
+  'Não fuma',
+  'Aceita pets',
+  'Aceita bagagem',
+  'Conversa tranquila',
 ];
 
-const badges: Badge[] = [
-  { name: 'Motorista Confiável', icon: '🚗', color: colors.orange },
-  { name: 'Passageiro 5 Estrelas', icon: '⭐', color: colors.navy },
-];
+export function ProfileScreen() {
+  const { voltar, navegar } = useNavigation();
+  const { atualizarUsuario } = useAuth();
 
-const reviews: Review[] = [
-  {
-    name: 'João Santos',
-    rating: 5,
-    comment: 'Excelente motorista! Muito pontual e educado.',
-    date: '28 Abr',
-  },
-  {
-    name: 'Ana Costa',
-    rating: 5,
-    comment: 'Ótima conversa e direção tranquila. Recomendo!',
-    date: '25 Abr',
-  },
-];
+  const perfil = useCarregar(() => usuarioService.meuPerfil(), []);
+  const [editando, setEditando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
-const tags = ['Música ambiente', 'Pontual', 'Não fuma', 'Aceita pets'];
+  const [nome, setNome] = useState('');
+  const [curso, setCurso] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [bio, setBio] = useState('');
+  const [preferencias, setPreferencias] = useState<string[]>([]);
 
-export function ProfileScreen({
-  user,
-  onBack,
-  onNavigateToCar,
-  onLogout,
-}: {
-  user: any;
-  onBack: () => void;
-  onNavigateToCar: () => void;
-  onLogout: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-
-  // Estados preenchidos dinamicamente com o nome do utilizador logado
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(user?.nome || 'Usuário');
-  const [course, setCourse] = useState('Engenharia • 3º ano');
-  const [bio, setBio] = useState(
-    'Estudante de Engenharia que adora compartilhar caronas para o campus. Sempre pontual e gosto de música ambiente durante o trajeto.'
+  const avaliacoes = useCarregar(
+    () => (perfil.dados ? usuarioService.avaliacoes(perfil.dados.id) : Promise.resolve([])),
+    [perfil.dados?.id],
   );
 
-  return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.screen}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.navy} />
+  const abrirEdicao = () => {
+    const dados = perfil.dados;
+    if (!dados) return;
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.headerTopRow}>
-          <Pressable
-            onPress={onBack}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <ArrowLeft size={24} color={colors.white} />
-          </Pressable>
-        </View>
+    setNome(dados.nome ?? '');
+    setCurso(dados.curso ?? '');
+    setTelefone(dados.telefone ?? '');
+    setBio(dados.bio ?? '');
+    setPreferencias(dados.preferencias ?? []);
+    setErroSalvar(null);
+    setEditando(true);
+  };
 
-        <View style={styles.headerCenter}>
-          <View style={styles.avatarWrapper}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {name ? name[0].toUpperCase() : 'U'}
-              </Text>
-            </View>
-            <Pressable
-              style={styles.editButton}
-              hitSlop={8}
-              onPress={() => setIsEditing(!isEditing)}
-              accessibilityRole="button"
-              accessibilityLabel="Editar perfil"
-            >
-              {isEditing ? (
-                <Check size={14} color={colors.green} />
-              ) : (
-                <Edit size={14} color={colors.navy} />
-              )}
-            </Pressable>
-          </View>
+  const alternarPreferencia = (item: string) =>
+    setPreferencias((atuais) =>
+      atuais.includes(item) ? atuais.filter((valor) => valor !== item) : [...atuais, item],
+    );
 
-          {isEditing ? (
-            <TextInput
-              style={[styles.name, styles.nameInput]}
-              value={name}
-              onChangeText={setName}
-              placeholder="O seu nome"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-            />
-          ) : (
-            <Text style={styles.name}>{name}</Text>
-          )}
+  const salvar = async () => {
+    setSalvando(true);
+    setErroSalvar(null);
 
-          {isEditing ? (
-            <TextInput
-              style={[styles.course, styles.courseInput]}
-              value={course}
-              onChangeText={setCourse}
-              placeholder="O seu curso"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-            />
-          ) : (
-            <Text style={styles.course}>{course}</Text>
-          )}
+    try {
+      const atualizado = await usuarioService.atualizar({
+        nome: nome.trim(),
+        curso: curso.trim() || null,
+        telefone: telefone.trim() || null,
+        bio: bio.trim() || null,
+        preferencias,
+      });
 
-          <View style={styles.ratingRow}>
-            <Star size={16} color={colors.orange} fill={colors.orange} />
-            <Text style={styles.ratingValue}>4.9</Text>
-            <Text style={styles.ratingCount}>(42 avaliações)</Text>
-          </View>
-        </View>
+      atualizarUsuario(atualizado);
+      if (perfil.dados) perfil.definir({ ...perfil.dados, ...atualizado });
+      setEditando(false);
+    } catch (falha) {
+      setErroSalvar(falha instanceof Error ? falha.message : 'Não foi possível salvar.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  if (perfil.carregando) {
+    return (
+      <View style={estilos.tela}>
+        <Header titulo="Perfil" onVoltar={voltar} />
+        <Loading />
       </View>
+    );
+  }
 
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: insets.bottom + 24 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {stats.map((stat) => (
-            <View key={stat.label} style={[styles.card, styles.statCard]}>
-              <stat.icon
-                size={20}
-                color={colors.orange}
-                style={styles.statIcon}
-              />
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+  if (perfil.erro || !perfil.dados) {
+    return (
+      <View style={estilos.tela}>
+        <Header titulo="Perfil" onVoltar={voltar} />
+        <ErrorState mensagem={perfil.erro ?? 'Perfil indisponível.'} onTentarNovamente={perfil.recarregar} />
+      </View>
+    );
+  }
+
+  const dados = perfil.dados;
+
+  if (editando) {
+    return (
+      <View style={estilos.tela}>
+        <Header titulo="Editar perfil" onVoltar={() => setEditando(false)} />
+
+        <Screen contentStyle={estilos.conteudo}>
+          <Field label="Nome completo" value={nome} onChangeText={setNome} icone="users" />
+          <Field label="Curso" value={curso} onChangeText={setCurso} icone="award" />
+          <Field
+            label="Telefone"
+            value={telefone}
+            onChangeText={(valor) => setTelefone(mascaras.telefone(valor))}
+            icone="phone"
+            keyboardType="phone-pad"
+          />
+          <TextArea
+            label="Sobre você"
+            placeholder="Conte um pouco sobre seus trajetos e preferências..."
+            value={bio}
+            onChangeText={setBio}
+          />
+
+          <View style={estilos.bloco}>
+            <SectionTitle>Preferências de viagem</SectionTitle>
+            <View style={estilos.tags}>
+              {PREFERENCIAS_DISPONIVEIS.map((item) => {
+                const ativo = preferencias.includes(item);
+                return (
+                  <Pressable
+                    key={item}
+                    onPress={() => alternarPreferencia(item)}
+                    style={[estilos.tag, ativo && estilos.tagAtiva]}
+                  >
+                    <Text style={[estilos.tagTexto, ativo && estilos.tagTextoAtivo]}>{item}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          ))}
+          </View>
+
+          {erroSalvar ? <Text style={estilos.erro}>{erroSalvar}</Text> : null}
+
+          <Button label="Salvar alterações" carregando={salvando} onPress={salvar} />
+        </Screen>
+      </View>
+    );
+  }
+
+  return (
+    <View style={estilos.tela}>
+      <Header
+        onVoltar={voltar}
+        acao={
+          <Pressable onPress={abrirEdicao} hitSlop={10}>
+            <Icon name="edit" size={20} color={colors.white} />
+          </Pressable>
+        }
+      >
+        <View style={estilos.cabecalho}>
+          <Avatar nome={dados.nome} tamanho={96} />
+          <Text style={estilos.nomeGrande}>{dados.nome}</Text>
+
+          <Text style={estilos.subtitulo}>
+            {[dados.curso, dados.universidade].filter(Boolean).join(' • ') || 'Estudante'}
+          </Text>
+
+          <View style={estilos.linhaNota}>
+            <StarRating nota={dados.avaliacaoMedia} tamanho={16} />
+            <Text style={estilos.totalAvaliacoes}>
+              ({dados.totalAvaliacoes} avaliações)
+            </Text>
+          </View>
+
+          <View style={estilos.selo}>
+            <Icon name="check-circle" size={13} color={colors.success} />
+            <Text style={estilos.seloTexto}>
+              E-mail institucional verificado
+            </Text>
+          </View>
+        </View>
+      </Header>
+
+      <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
+        <View style={estilos.estatisticas}>
+          <StatCard
+            icone="map-pin"
+            valor={dados.estatisticas.caronasOferecidas}
+            label="Oferecidas"
+          />
+          <StatCard
+            icone="calendar"
+            valor={dados.estatisticas.caronasRecebidas}
+            label="Recebidas"
+          />
+          <StatCard
+            icone="leaf"
+            valor={`${dados.estatisticas.co2EvitadoKg.toFixed(0)} kg`}
+            label="CO₂ evitado"
+            cor={colors.success}
+          />
         </View>
 
-        {/* Badges */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conquistas</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.badgesContainer}
-          >
-            {badges.map((badge) => (
-              <View key={badge.name} style={[styles.card, styles.badgeCard]}>
-                <Text style={styles.badgeEmoji}>{badge.icon}</Text>
-                <Text style={[styles.badgeName, { color: badge.color }]}>
-                  {badge.name}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Sobre */}
-        <View style={[styles.card, styles.aboutCard]}>
-          <Text style={styles.sectionTitle}>Sobre</Text>
-          
-          {isEditing ? (
-            <TextInput
-              style={[styles.aboutText, styles.aboutInput]}
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              placeholder="Fale um pouco sobre si..."
-              placeholderTextColor={colors.mutedForeground}
-            />
-          ) : (
-            <Text style={styles.aboutText}>{bio}</Text>
-          )}
-
-          {!isEditing && (
-            <View style={styles.tagsRow}>
-              {tags.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
+        <Card style={estilos.bloco}>
+          <SectionTitle>Sobre</SectionTitle>
+          <Text style={estilos.bio}>
+            {dados.bio?.trim() || 'Este perfil ainda não tem uma descrição.'}
+          </Text>
+          {dados.preferencias?.length ? (
+            <View style={estilos.tags}>
+              {dados.preferencias.map((item) => (
+                <View key={item} style={estilos.tagLeitura}>
+                  <Text style={estilos.tagTexto}>{item}</Text>
                 </View>
               ))}
             </View>
-          )}
+          ) : null}
+        </Card>
 
-          {isEditing && (
-            <Pressable 
-              style={styles.saveButton} 
-              onPress={() => setIsEditing(false)}
-            >
-              <Text style={styles.saveButtonText}>Guardar Alterações</Text>
-            </Pressable>
-          )}
-        </View>
+        <View style={estilos.bloco}>
+          <SectionTitle>Avaliações recebidas</SectionTitle>
 
-        {/* Reviews */}
-        <View style={styles.section}>
-          <View style={styles.reviewsHeader}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-              Avaliações Recentes
-            </Text>
-            <Pressable hitSlop={8} accessibilityRole="button">
-              <Text style={styles.seeAll}>Ver todas</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.reviewsList}>
-            {reviews.map((review) => (
-              <View
-                key={`${review.name}-${review.date}`}
-                style={[styles.card, styles.reviewCard]}
-              >
-                <View style={styles.reviewTop}>
-                  <View style={styles.reviewerRow}>
-                    <View style={styles.reviewerAvatar}>
-                      <Text style={styles.reviewerInitial}>
-                        {review.name[0]}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.reviewerName}>{review.name}</Text>
-                      <View style={styles.starsRow}>
-                        {Array.from({ length: review.rating }).map((_, i) => (
-                          <Star
-                            key={i}
-                            size={12}
-                            color={colors.orange}
-                            fill={colors.orange}
-                          />
-                        ))}
-                      </View>
-                    </View>
+          {avaliacoes.carregando ? (
+            <Loading texto="Carregando avaliações..." />
+          ) : (avaliacoes.dados?.length ?? 0) === 0 ? (
+            <Text style={estilos.vazio}>Ninguém avaliou você ainda.</Text>
+          ) : (
+            avaliacoes.dados!.slice(0, 5).map((avaliacao) => (
+              <Card key={avaliacao.id} style={estilos.cartaoAvaliacao}>
+                <View style={estilos.linhaAvaliacao}>
+                  <Avatar nome={avaliacao.autor.nome} tamanho={40} cor={colors.navy} />
+                  <View style={estilos.flex}>
+                    <Text style={estilos.autorNome}>{avaliacao.autor.nome}</Text>
+                    <StarRating nota={avaliacao.nota} tamanho={12} />
                   </View>
-                  <Text style={styles.reviewDate}>{review.date}</Text>
+                  <Text style={estilos.dataAvaliacao}>{formatarData(avaliacao.criadaEm)}</Text>
                 </View>
-                <Text style={styles.reviewComment}>{review.comment}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-        {/* Botões do Rodapé: Cadastrar Carro e Sair da Conta */}
-        <View style={styles.footerActions}>
-          <Pressable style={styles.carButton} onPress={onNavigateToCar}>
-            <Text style={styles.carButtonText}>Cadastrar meu carro →</Text>
-          </Pressable>
-
-          <Pressable style={styles.logoutButton} onPress={onLogout}>
-            <Text style={styles.logoutText}>Sair da conta</Text>
-          </Pressable>
+                {avaliacao.comentario ? (
+                  <Text style={estilos.comentario}>{avaliacao.comentario}</Text>
+                ) : null}
+              </Card>
+            ))
+          )}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    backgroundColor: colors.navy,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  headerTopRow: {
+const estilos = StyleSheet.create({
+  tela: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+
+  cabecalho: { alignItems: 'center', gap: spacing.xs, marginTop: spacing.md },
+  nomeGrande: { ...typography.h2, color: colors.white, marginTop: spacing.md },
+  subtitulo: { ...typography.small, color: tints.onNavyText },
+  linhaNota: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  totalAvaliacoes: { ...typography.small, color: tints.onNavyText },
+  selo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: tints.onNavy,
   },
-  headerCenter: {
-    alignItems: 'center',
-  },
-  avatarWrapper: {
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: colors.white,
-    fontSize: 30,
-    fontWeight: '700',
-  },
-  editButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  name: {
-    color: colors.white,
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  nameInput: {
-    borderBottomWidth: 1,
-    borderColor: colors.orange,
-    minWidth: 200,
-    textAlign: 'center',
-    paddingVertical: 2,
-  },
-  course: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  courseInput: {
-    borderBottomWidth: 1,
-    borderColor: colors.orange,
-    minWidth: 160,
-    textAlign: 'center',
-    paddingVertical: 2,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingValue: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  ratingCount: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    marginLeft: 4,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: colors.navy,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    alignItems: 'center',
-  },
-  statIcon: {
-    marginBottom: 8,
-  },
-  statValue: {
-    color: colors.navy,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    lineHeight: 15,
-    textAlign: 'center',
-  },
-  badgesContainer: {
-    gap: 12,
-    paddingBottom: 8,
-  },
-  badgeCard: {
-    minWidth: 140,
-    padding: 16,
-    alignItems: 'center',
-  },
-  badgeEmoji: {
-    fontSize: 30,
-    marginBottom: 8,
-  },
-  badgeName: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  aboutCard: {
-    padding: 20,
-    marginBottom: 24,
-  },
-  aboutText: {
-    color: colors.mutedForeground,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  aboutInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    backgroundColor: colors.background,
-  },
-  saveButton: {
-    backgroundColor: colors.orange,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  saveButtonText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  seloTexto: { ...typography.caption, fontWeight: '600', color: colors.success },
+
+  conteudo: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxl },
+  estatisticas: { flexDirection: 'row', gap: spacing.md },
+
+  bloco: { gap: spacing.md },
+  bio: { ...typography.small, color: colors.mutedForeground },
+
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  tagLeitura: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
   },
-  tagText: {
-    color: colors.navy,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  reviewsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  seeAll: {
-    color: colors.orange,
-    fontSize: 14,
-  },
-  reviewsList: {
-    gap: 12,
-  },
-  reviewCard: {
-    padding: 16,
-  },
-  reviewTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  reviewerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  reviewerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reviewerInitial: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  reviewerName: {
-    color: colors.navy,
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  reviewDate: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-  },
-  reviewComment: {
-    color: colors.mutedForeground,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-/* Novos estilos para os botões do rodapé */
-    footerActions: {
-      marginTop: 24,
-      marginBottom: 32,
-      gap: 16,
-      alignItems: 'center',
-    },
-    carButton: {
-      backgroundColor: colors.orange,
-      width: '100%',
-      paddingVertical: 16,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    carButtonText: {
-      color: colors.white,
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    logoutButton: {
-      paddingVertical: 8,
-    },
-    logoutText: {
-      color: '#dc2626',
-      fontSize: 14,
-      fontWeight: '600',
-    },
-  
+  tagAtiva: { borderColor: colors.orange, backgroundColor: tints.orange },
+  tagTexto: { ...typography.caption, fontWeight: '600', color: colors.navy },
+  tagTextoAtivo: { color: colors.orange },
+
+  cartaoAvaliacao: { gap: spacing.sm },
+  linhaAvaliacao: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  autorNome: { ...typography.smallMedium, color: colors.navy },
+  dataAvaliacao: { ...typography.caption, color: colors.mutedForeground },
+  comentario: { ...typography.small, color: colors.mutedForeground },
+
+  vazio: { ...typography.small, color: colors.mutedForeground },
+  erro: { ...typography.small, color: colors.destructive },
 });

@@ -49,6 +49,8 @@ export class AuthService {
         cpf,
         senhaHash,
         perfil: 'PASSAGEIRO',
+        curso: dto.curso?.trim() || null,
+        universidade: dto.universidade?.trim() || 'Universidade Católica de Brasília',
       },
     });
 
@@ -124,7 +126,18 @@ export class AuthService {
     return this.publicUser(usuario);
   }
 
-  private publicUser(usuario: { id: string; nome: string; email: string; cpf: string; perfil: string; emailValidado: boolean }) {
+  private publicUser(usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    cpf: string;
+    perfil: string;
+    emailValidado: boolean;
+    curso?: string | null;
+    universidade?: string | null;
+    fotoUrl?: string | null;
+    statusVerificacao?: string;
+  }) {
     return {
       id: usuario.id,
       nome: usuario.nome,
@@ -132,6 +145,10 @@ export class AuthService {
       cpf: usuario.cpf,
       perfil: usuario.perfil,
       emailValidado: usuario.emailValidado,
+      curso: usuario.curso ?? null,
+      universidade: usuario.universidade ?? null,
+      fotoUrl: usuario.fotoUrl ?? null,
+      statusVerificacao: usuario.statusVerificacao ?? 'NAO_ENVIADA',
     };
   }
 

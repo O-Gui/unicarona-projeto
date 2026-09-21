@@ -1,7 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   // Habilita a extensão do PostGIS no Prisma
-  previewFeatures = ["postgresqlExtensions"] 
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
@@ -19,34 +19,100 @@ enum PerfilUsuario {
   AMBOS
 }
 
+enum StatusVerificacao {
+  NAO_ENVIADA
+  PENDENTE
+  APROVADA
+  RECUSADA
+}
+
+enum StatusCarona {
+  ABERTA
+  LOTADA
+  CANCELADA
+  CONCLUIDA
+}
+
+enum StatusSolicitacao {
+  PENDENTE
+  ACEITA
+  RECUSADA
+  CANCELADA
+}
+
+enum TipoNotificacao {
+  SOLICITACAO_CARONA
+  SOLICITACAO_RESPONDIDA
+  CARONA_CANCELADA
+  LEMBRETE_CARONA
+  NOVA_AVALIACAO
+  VERIFICACAO
+  MENSAGEM
+}
+
 model Usuario {
-  id            String         @id @default(uuid()) @db.Uuid
+  id            String        @id @default(uuid()) @db.Uuid
   nome          String
-  email         String         @unique
-  cpf           String         @unique @db.VarChar(11)
+  email         String        @unique
+  cpf           String        @unique @db.VarChar(11)
   senhaHash     String
-  perfil        PerfilUsuario  @default(PASSAGEIRO)
-  emailValidado Boolean        @default(false)
-  
+  perfil        PerfilUsuario @default(PASSAGEIRO)
+  emailValidado Boolean       @default(false)
+
+  // Dados de perfil exibidos nas telas (Profile, Settings, RideDetails...)
+  curso        String?
+  universidade String?
+  telefone     String?
+  bio          String?
+  fotoUrl      String?
+  preferencias String[] @default([])
+
+  // UC07 - verificacao academica
+  statusVerificacao StatusVerificacao      @default(NAO_ENVIADA)
+  documentos        DocumentoVerificacao[]
+
+  criadoEm DateTime @default(now())
+
   // Relacionamentos
-  veiculos      Veiculo[]
-  rotas         Rota[]
-  solicitacoes  Solicitacao[]
-  participacoes Participacao[]
-  codigosVerificacao CodigoVerificacaoEmail[]
+  veiculos            Veiculo[]
+  rotas               Rota[]
+  solicitacoes        Solicitacao[]
+  participacoes       Participacao[]
+  codigosVerificacao  CodigoVerificacaoEmail[]
+  notificacoes        Notificacao[]
+  mensagens           Mensagem[]
+  conversasComoA      Conversa[]               @relation("ConversaUsuarioA")
+  conversasComoB      Conversa[]               @relation("ConversaUsuarioB")
+  avaliacoesFeitas    Avaliacao[]              @relation("AvaliacaoAutor")
+  avaliacoesRecebidas Avaliacao[]              @relation("AvaliacaoAlvo")
+  denunciasFeitas     Denuncia[]               @relation("DenunciaAutor")
+  denunciasRecebidas  Denuncia[]               @relation("DenunciaAlvo")
 }
 
 model CodigoVerificacaoEmail {
-  id        String   @id @default(uuid()) @db.Uuid
-  usuarioId String   @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String   @db.Uuid
   codigoHash String
-  expiresAt DateTime
-  usado     Boolean  @default(false)
-  createdAt DateTime @default(now())
+  expiresAt  DateTime
+  usado      Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, usado])
+}
+
+model DocumentoVerificacao {
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String   @db.Uuid
+  // CARTEIRA_FRENTE | CARTEIRA_VERSO | CNH | SELFIE
+  tipo       String
+  arquivoUrl String
+  enviadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, tipo])
 }
 
 model Veiculo {
@@ -54,53 +120,128 @@ model Veiculo {
   usuarioId       String  @db.Uuid
   modelo          String
   placa           String  @unique
-  capacidadeVagas Int     
-  
-  usuario         Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  capacidadeVagas Int
+  cor             String?
+  ano             Int?
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  caronas Carona[]
 }
 
 model Rota {
-  id           String  @id @default(uuid()) @db.Uuid
-  usuarioId    String  @db.Uuid
-  
-  // Tipo geográfico do PostGIS suportado pelo Prisma
+  id        String @id @default(uuid()) @db.Uuid
+  usuarioId String @db.Uuid
+
+  // Tipo geografico do PostGIS suportado pelo Prisma.
+  // Gravado/lido via SQL cru em RotaRepository (Prisma nao escreve Unsupported).
   pontoOrigem  Unsupported("geography(Point, 4326)")
   pontoDestino Unsupported("geography(Point, 4326)")
-  
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  caronas      Carona[]
+
+  // Rotulos legiveis exibidos nas telas
+  origemNome      String
+  origemEndereco  String?
+  destinoNome     String
+  destinoEndereco String?
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  caronas Carona[]
 }
 
 model Carona {
-  id              String        @id @default(uuid()) @db.Uuid
-  rotaId          String        @db.Uuid
+  id              String   @id @default(uuid()) @db.Uuid
+  rotaId          String   @db.Uuid
+  veiculoId       String?  @db.Uuid
   dataHoraPartida DateTime
-  
-  rota            Rota          @relation(fields: [rotaId], references: [id], onDelete: Cascade)
-  solicitacoes    Solicitacao[]
-  viagem          Viagem?
+
+  vagasTotais        Int          @default(1)
+  vagasDisponiveis   Int          @default(1)
+  precoPorPassageiro Decimal      @default(0) @db.Decimal(10, 2)
+  observacoes        String?
+  preferencias       String[]     @default([])
+  status             StatusCarona @default(ABERTA)
+  criadaEm           DateTime     @default(now())
+
+  rota         Rota          @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  veiculo      Veiculo?      @relation(fields: [veiculoId], references: [id], onDelete: SetNull)
+  solicitacoes Solicitacao[]
+  viagem       Viagem?
+  conversas    Conversa[]
+  denuncias    Denuncia[]
+
+  @@index([dataHoraPartida, status])
 }
 
 model Solicitacao {
-  id           String  @id @default(uuid()) @db.Uuid
-  passageiroId String  @db.Uuid
-  caronaId     String  @db.Uuid
-  status       String  @default("PENDENTE")
-  
-  passageiro   Usuario @relation(fields: [passageiroId], references: [id], onDelete: Cascade)
-  carona       Carona  @relation(fields: [caronaId], references: [id], onDelete: Cascade)
+  id           String            @id @default(uuid()) @db.Uuid
+  passageiroId String            @db.Uuid
+  caronaId     String            @db.Uuid
+  status       StatusSolicitacao @default(PENDENTE)
+  vagas        Int               @default(1)
+  mensagem     String?
+  criadaEm     DateTime          @default(now())
+
+  passageiro Usuario @relation(fields: [passageiroId], references: [id], onDelete: Cascade)
+  carona     Carona  @relation(fields: [caronaId], references: [id], onDelete: Cascade)
+
+  @@unique([passageiroId, caronaId])
+}
+
+model Notificacao {
+  id         String          @id @default(uuid()) @db.Uuid
+  usuarioId  String          @db.Uuid
+  tipo       TipoNotificacao
+  titulo     String
+  mensagem   String
+  lida       Boolean         @default(false)
+  // Referencia livre (id de carona, solicitacao, avaliacao...)
+  referencia String?
+  criadaEm   DateTime        @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, lida, criadaEm])
+}
+
+model Conversa {
+  id           String   @id @default(uuid()) @db.Uuid
+  usuarioAId   String   @db.Uuid
+  usuarioBId   String   @db.Uuid
+  caronaId     String   @db.Uuid
+  atualizadaEm DateTime @default(now())
+
+  usuarioA  Usuario    @relation("ConversaUsuarioA", fields: [usuarioAId], references: [id], onDelete: Cascade)
+  usuarioB  Usuario    @relation("ConversaUsuarioB", fields: [usuarioBId], references: [id], onDelete: Cascade)
+  carona    Carona     @relation(fields: [caronaId], references: [id], onDelete: Cascade)
+  mensagens Mensagem[]
+
+  @@unique([usuarioAId, usuarioBId, caronaId])
+}
+
+model Mensagem {
+  id         String   @id @default(uuid()) @db.Uuid
+  conversaId String   @db.Uuid
+  autorId    String   @db.Uuid
+  texto      String
+  lida       Boolean  @default(false)
+  enviadaEm  DateTime @default(now())
+
+  conversa Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  autor    Usuario  @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([conversaId, enviadaEm])
 }
 
 // =========================================================================
-// TABELAS DE HISTÓRICO E AUDITORIA (IMUTÁVEIS - Restrict)
+// TABELAS DE HISTORICO E AUDITORIA (IMUTAVEIS - Restrict)
 // =========================================================================
 
 model Viagem {
-  id           String         @id @default(uuid()) @db.Uuid
-  caronaId     String         @unique @db.Uuid
-  statusViagem String         @default("CONCLUIDA")
-  
-  carona       Carona         @relation(fields: [caronaId], references: [id], onDelete: Restrict)
+  id           String   @id @default(uuid()) @db.Uuid
+  caronaId     String   @unique @db.Uuid
+  statusViagem String   @default("CONCLUIDA")
+  concluidaEm  DateTime @default(now())
+
+  carona        Carona         @relation(fields: [caronaId], references: [id], onDelete: Restrict)
   participantes Participacao[]
   avaliacoes    Avaliacao[]
 }
@@ -109,16 +250,62 @@ model Participacao {
   id        String  @id @default(uuid()) @db.Uuid
   viagemId  String  @db.Uuid
   usuarioId String  @db.Uuid
-  
-  viagem    Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
-  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  // MOTORISTA | PASSAGEIRO
+  papel     String  @default("PASSAGEIRO")
+  valorPago Decimal @default(0) @db.Decimal(10, 2)
+
+  viagem  Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@unique([viagemId, usuarioId])
 }
 
 model Avaliacao {
-  id       String  @id @default(uuid()) @db.Uuid
-  viagemId String  @db.Uuid
-  // A validação de nota de 1 a 5 deve ser feita no código do backend (NestJS)
-  nota     Int
-  
-  viagem   Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
+  id         String   @id @default(uuid()) @db.Uuid
+  viagemId   String   @db.Uuid
+  autorId    String   @db.Uuid
+  alvoId     String   @db.Uuid
+  // A validacao de nota de 1 a 5 e feita no AvaliacaoService
+  nota       Int
+  comentario String?
+  // { pontualidade: 5, seguranca: 5, limpeza: 4, comunicacao: 5 }
+  categorias Json?
+  tags       String[] @default([])
+  criadaEm   DateTime @default(now())
+
+  viagem Viagem  @relation(fields: [viagemId], references: [id], onDelete: Restrict)
+  autor  Usuario @relation("AvaliacaoAutor", fields: [autorId], references: [id], onDelete: Restrict)
+  alvo   Usuario @relation("AvaliacaoAlvo", fields: [alvoId], references: [id], onDelete: Restrict)
+
+  @@unique([viagemId, autorId, alvoId])
+  @@index([alvoId])
+}
+
+// UC - Reportar problema (ReportScreen). O app envia o motivo e a descricao;
+// a moderacao acontece fora do app, por isso o status comeca em ABERTA.
+enum StatusDenuncia {
+  ABERTA
+  EM_ANALISE
+  RESOLVIDA
+  ARQUIVADA
+}
+
+model Denuncia {
+  id        String         @id @default(uuid()) @db.Uuid
+  autorId   String         @db.Uuid
+  alvoId    String?        @db.Uuid
+  caronaId  String?        @db.Uuid
+  // seguranca | assedio | fraude | falta | veiculo | rota | pagamento | outro
+  motivo    String
+  descricao String
+  anonima   Boolean        @default(false)
+  status    StatusDenuncia @default(ABERTA)
+  criadaEm  DateTime       @default(now())
+
+  autor  Usuario  @relation("DenunciaAutor", fields: [autorId], references: [id], onDelete: Cascade)
+  alvo   Usuario? @relation("DenunciaAlvo", fields: [alvoId], references: [id], onDelete: SetNull)
+  carona Carona?  @relation(fields: [caronaId], references: [id], onDelete: SetNull)
+
+  @@index([autorId])
+  @@index([status])
 }
