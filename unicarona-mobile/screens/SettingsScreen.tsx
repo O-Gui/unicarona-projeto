@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Button, Card, Header, MenuItem, Screen } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { colors, radius, spacing, typography } from '../theme';
+import { usuarioService } from '../lib/servicos';
 import { useAuth } from '../state/AuthContext';
 import { useNavigation } from '../state/NavigationContext';
 import type { Rota } from '../state/NavigationContext';
@@ -54,6 +55,7 @@ export function SettingsScreen() {
   const { usuario, sair } = useAuth();
   const { navegar, reiniciar } = useNavigation();
   const [saindo, setSaindo] = useState(false);
+  const [deletando, setDeletando] = useState(false);
 
   const confirmarSaida = () => {
     Alert.alert('Sair da conta', 'Você precisará entrar novamente para usar o app.', [
@@ -68,6 +70,34 @@ export function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const confirmarExclusao = () => {
+    Alert.alert(
+      'Deletar conta',
+      'Seus dados pessoais, veículos, mensagens e notificações serão apagados. Essa ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Deletar',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletando(true);
+            try {
+              await usuarioService.deletarConta();
+              await sair();
+              reiniciar('login');
+            } catch (falha) {
+              setDeletando(false);
+              Alert.alert(
+                'Não foi possível deletar',
+                falha instanceof Error ? falha.message : 'Tente novamente.',
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -117,6 +147,13 @@ export function SettingsScreen() {
           icone="log-out"
           carregando={saindo}
           onPress={confirmarSaida}
+        />
+
+        <Button
+          label="Deletar conta"
+          variante="perigo"
+          carregando={deletando}
+          onPress={confirmarExclusao}
         />
       </Screen>
     </View>

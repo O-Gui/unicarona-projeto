@@ -68,7 +68,9 @@ export const usuarioService = {
       '/usuarios/me/verificacao',
     ),
 
+  deletarConta: () => api.delete<{ message: string }>('/usuarios/me'),
 };
+
 
 export const veiculoService = {
   principal: () => api.get<Veiculo | null>('/veiculos/me'),

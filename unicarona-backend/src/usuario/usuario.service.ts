@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Prisma, StatusVerificacao } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -80,6 +81,58 @@ export class UsuarioService {
       data: dto,
       select: USUARIO_PUBLICO,
     });
+  }
+
+  /**
+   * Exclui a conta. Sem histórico, apaga de verdade. Com histórico de viagens
+   * ou avaliações (tabelas Restrict), anonimiza: o registro fica só para não
+   * quebrar o histórico dos outros usuários, mas sem nenhum dado pessoal.
+   */
+  async deletarConta(id: string) {
+    await this.garantirExiste(id);
+
+    try {
+      await this.prisma.usuario.delete({ where: { id } });
+    } catch (erro) {
+      // P2003: há viagens/avaliações vinculadas, então o banco recusa apagar.
+      if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === 'P2003') {
+        await this.anonimizar(id);
+      } else {
+        throw erro;
+      }
+    }
+
+    return { message: 'Conta excluída com sucesso.' };
+  }
+
+  private async anonimizar(id: string) {
+    await this.prisma.$transaction([
+      this.prisma.codigoVerificacaoEmail.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.documentoVerificacao.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.notificacao.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.solicitacao.deleteMany({ where: { passageiroId: id } }),
+      this.prisma.mensagem.deleteMany({ where: { autorId: id } }),
+      this.prisma.veiculo.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.usuario.update({
+        where: { id },
+        data: {
+          nome: 'Usuário removido',
+          email: `removido-${id}@removido.invalid`,
+          // cpf é VarChar(11) e único: usa os 11 primeiros caracteres do id.
+          cpf: id.replace(/-/g, '').slice(0, 11),
+          senhaHash: randomBytes(32).toString('hex'),
+          perfil: 'PASSAGEIRO',
+          emailValidado: false,
+          curso: null,
+          universidade: null,
+          telefone: null,
+          bio: null,
+          fotoUrl: null,
+          preferencias: [],
+          statusVerificacao: 'NAO_ENVIADA',
+        },
+      }),
+    ]);
   }
 
   /**

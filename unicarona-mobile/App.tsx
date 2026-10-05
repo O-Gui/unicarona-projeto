@@ -150,7 +150,7 @@ function Aplicacao() {
   return (
     <View style={estilos.fundo}>
       <View style={estilos.limite}>
-        {mostrarCromo ? <AnnouncementBar /> : null}
+        {mostrarCromo ? <AnnouncementBar onNavegar={navegar} /> : null}
 
         <View style={estilos.conteudo}>
           {/* A chave força a remontagem ao trocar de rota, zerando o estado

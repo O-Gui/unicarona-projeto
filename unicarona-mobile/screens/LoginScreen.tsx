@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Button, Field } from '../components/ui';
 import { colors, radius, spacing, typography } from '../theme';
 import { useNavigation } from '../state/NavigationContext';
 import { useAuth } from '../state/AuthContext';
+
+const FORMATO_SENHA = [
+  'Ao menos 8 caracteres',
+  'Ao menos uma letra maiúscula',
+  'Ao menos um caractere especial (! @ # $ % & *)',
+  'Ao menos 1 número',
+];
 
 export function LoginScreen() {
   const { navegar, reiniciar } = useNavigation();
@@ -13,6 +20,7 @@ export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarFormato, setMostrarFormato] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -86,12 +94,33 @@ export function LoginScreen() {
         erro={erro ?? undefined}
       />
 
-      <Button
-        label="Esqueceu a senha?"
-        variante="fantasma"
-        onPress={() => navegar('forgot-password')}
-        style={estilos.esqueci}
-      />
+      <View style={estilos.linhaAjuda}>
+        <Pressable
+          onPress={() => setMostrarFormato((atual) => !atual)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: mostrarFormato }}
+        >
+          <Text style={estilos.formato}>Formato</Text>
+        </Pressable>
+
+        <Button
+          label="Esqueceu a senha?"
+          variante="fantasma"
+          onPress={() => navegar('forgot-password')}
+          style={estilos.esqueci}
+        />
+      </View>
+
+      {mostrarFormato ? (
+        <View style={estilos.formatoCaixa}>
+          {FORMATO_SENHA.map((regra) => (
+            <Text key={regra} style={estilos.formatoItem}>
+              {regra}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <Button
         label="Entrar"
@@ -136,7 +165,26 @@ const estilos = StyleSheet.create({
   titulo: { ...typography.h2, color: colors.navy, marginBottom: spacing.xs },
   subtitulo: { ...typography.small, color: colors.mutedForeground },
 
-  esqueci: { alignSelf: 'flex-end', paddingHorizontal: 0, marginTop: -spacing.sm, marginBottom: spacing.md },
+  linhaAjuda: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  formato: { ...typography.smallMedium, fontWeight: '900', color: colors.navy, fontSize: 18 },
+  esqueci: { paddingHorizontal: 0 },
+
+  formatoCaixa: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  formatoItem: { ...typography.caption, color: colors.mutedForeground },
 
   divisor: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.xl },
   divisorLinha: { flex: 1, height: 1, backgroundColor: colors.border },

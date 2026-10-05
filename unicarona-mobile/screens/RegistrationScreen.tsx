@@ -2,11 +2,28 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BackButton, Button, Checkbox, Field, InfoBox } from '../components/ui';
 import { colors, spacing, typography } from '../theme';
-import { mascaras } from '../lib/format';
 import { authService } from '../lib/servicos';
 import { useNavigation } from '../state/NavigationContext';
 
 const DOMINIO_INSTITUCIONAL = /^[^\s@]+@a\.ucb\.br$/i;
+
+const somenteDigitos = (valor: string) => valor.replace(/\D/g, '').slice(0, 11);
+
+const formatarCpf = (digitos: string) =>
+  digitos
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+
+// Ajuste esta lista para bater com a regra do backend.
+const REQUISITOS_SENHA = [
+  { texto: 'Ao menos 8 caracteres', ok: (s: string) => s.length >= 8 },
+  { texto: 'Ao menos uma letra maiúscula', ok: (s: string) => /[A-Z]/.test(s) },
+  { texto: 'Ao menos um caractere especial (! @ # $ % & *)', ok: (s: string) => /[^A-Za-z0-9]/.test(s) },
+  { texto: 'Ao menos 1 número', ok: (s: string) => /\d/.test(s) },
+];
+
+const COR_OK = '#16a34a';
 
 export function RegistrationScreen() {
   const { voltar, substituir } = useNavigation();
@@ -30,7 +47,9 @@ export function RegistrationScreen() {
     }
     if (cpf.length !== 11) encontrados.cpf = 'O CPF precisa ter 11 dígitos.';
     if (!curso.trim()) encontrados.curso = 'Informe seu curso.';
-    if (senha.length < 8) encontrados.senha = 'A senha deve ter pelo menos 8 caracteres.';
+    if (!REQUISITOS_SENHA.every((req) => req.ok(senha))) {
+      encontrados.senha = 'A senha não atende aos requisitos.';
+    }
     if (senha !== confirmacao) encontrados.confirmacao = 'As senhas não são iguais.';
     if (!aceitou) encontrados.termos = 'Aceite os termos para criar sua conta.';
 
@@ -105,9 +124,9 @@ export function RegistrationScreen() {
         <Field
           label="CPF"
           icone="credit-card"
-          placeholder="00000000000"
-          value={cpf}
-          onChangeText={(valor) => setCpf(mascaras.cpf(valor))}
+          placeholder="000.000.000-00"
+          value={formatarCpf(cpf)}
+          onChangeText={(valor) => setCpf(somenteDigitos(valor))}
           keyboardType="numeric"
           erro={erros.cpf}
         />
@@ -131,6 +150,29 @@ export function RegistrationScreen() {
           secureTextEntry
           erro={erros.senha}
         />
+
+        <View style={estilos.balao}>
+          {REQUISITOS_SENHA.map((req) => {
+            const cumprido = req.ok(senha);
+            return (
+              <View key={req.texto} style={estilos.balaoLinha}>
+                <View
+                  style={[
+                    estilos.caixa,
+                    cumprido && { backgroundColor: COR_OK, borderColor: COR_OK },
+                  ]}
+                >
+                  {cumprido ? <Text style={estilos.caixaCheck}>✓</Text> : null}
+                </View>
+                <Text
+                  style={[estilos.balaoItem, { color: cumprido ? COR_OK : colors.mutedForeground }]}
+                >
+                  {req.texto}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
 
         <Field
           label="Confirmar senha"
@@ -174,6 +216,28 @@ const estilos = StyleSheet.create({
   progressoAtivo: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.orange },
   progressoInativo: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border },
   progressoTexto: { ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.xl },
+
+  balao: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: spacing.md,
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  balaoLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  balaoItem: { ...typography.caption, flex: 1 },
+  caixa: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  caixaCheck: { fontSize: 12, fontWeight: '700', color: colors.white },
 
   termos: { ...typography.caption, color: colors.mutedForeground, lineHeight: 17 },
   link: { color: colors.orange, fontWeight: '700' },

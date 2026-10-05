@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { UsuarioService } from './usuario.service';
@@ -17,8 +17,15 @@ export class UsuarioController {
   }
 
   @Patch('me')
+  
   atualizar(@CurrentUser('sub') id: string, @Body() dto: UpdateUsuarioDto) {
     return this.usuarioService.atualizar(id, dto);
+  }
+
+    /** Deleta a conta do usuário logado (identificado pelo token). */
+  @Delete('me')
+  deletarConta(@CurrentUser('sub') id: string) {
+    return this.usuarioService.deletarConta(id);
   }
 
   /** Alimenta HomeScreen, RideHistoryScreen e AnalyticsScreen. */

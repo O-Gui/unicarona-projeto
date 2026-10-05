@@ -1,49 +1,71 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, NomeIcone } from './Icon';
 import { colors, radius, spacing, tints, typography } from '../theme';
 import type { Rota } from '../state/NavigationContext';
 
-/**
- * Cromo fixo do app: faixa de avisos rolando e barra inferior de navegação.
- * O protótipo esconde os dois nas telas de entrada e no perfil.
- */
+interface Aviso {
+  texto: string;
+  rota: Rota;
+}
 
-const AVISOS = [
-  '🎓 Semana acadêmica: caronas com 50% de desconto',
-  '🚗 Novo trajeto disponível: Campus Sul → Centro',
-  '📢 Cadastre seu veículo e ganhe R$ 10 de bônus',
+// ⚠️ Confirme os nomes das rotas (ver NavigationContext)
+const AVISOS: Aviso[] = [
+  { texto: '🎓 Semana acadêmica: caronas com 50% de desconto', rota: 'find-ride' },
+  { texto: '🚗 Novo trajeto disponível: Campus Sul → Centro', rota: 'find-ride' },
+  { texto: '📢 Cadastre seu veículo e ganhe R$ 10 de bônus', rota: 'car' },
 ];
 
-export function AnnouncementBar() {
+export function AnnouncementBar({ onNavegar }: { onNavegar: (rota: Rota) => void }) {
   const deslocamento = useRef(new Animated.Value(0)).current;
+  const [larguraConjunto, setLarguraConjunto] = useState(0);
 
   useEffect(() => {
+    if (larguraConjunto === 0) return;
+    deslocamento.setValue(0);
     const animacao = Animated.loop(
       Animated.timing(deslocamento, {
         toValue: 1,
-        duration: 18000,
+        duration: larguraConjunto * 20, // ~50px por segundo
         easing: Easing.linear,
         useNativeDriver: true,
       }),
     );
     animacao.start();
     return () => animacao.stop();
-  }, [deslocamento]);
+  }, [deslocamento, larguraConjunto]);
 
   const translateX = deslocamento.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -900],
+    outputRange: [0, -larguraConjunto],
   });
+
+  const renderConjunto = (sufixo: string, medir: boolean) => (
+    <View
+      style={estilos.conjunto}
+      onLayout={medir ? (e) => setLarguraConjunto(e.nativeEvent.layout.width) : undefined}
+    >
+      {AVISOS.map((aviso, indice) => (
+        <Pressable
+          key={`${sufixo}-${indice}`}
+          onPress={() => onNavegar(aviso.rota)}
+          accessibilityRole="link"
+          accessibilityLabel={aviso.texto}
+          hitSlop={8}
+        >
+          <Text style={estilos.avisoTexto} numberOfLines={1}>
+            {aviso.texto}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
 
   return (
     <View style={estilos.avisos}>
       <Animated.View style={[estilos.avisosTrilha, { transform: [{ translateX }] }]}>
-        {[...AVISOS, ...AVISOS].map((aviso, indice) => (
-          <Text key={`${aviso}-${indice}`} style={estilos.avisoTexto}>
-            {aviso}
-          </Text>
-        ))}
+        {renderConjunto('a', true)}
+        {renderConjunto('b', false)}
       </Animated.View>
     </View>
   );
@@ -104,9 +126,15 @@ export function BottomNav({
 }
 
 const estilos = StyleSheet.create({
-  avisos: { backgroundColor: colors.navy, paddingVertical: spacing.sm, overflow: 'hidden' },
-  avisosTrilha: { flexDirection: 'row', gap: spacing.xxl, paddingHorizontal: spacing.lg },
-  avisoTexto: { ...typography.caption, fontWeight: '600', color: tints.onNavyText },
+avisos: { backgroundColor: colors.navy, paddingVertical: spacing.md, overflow: 'hidden' },
+avisosTrilha: { flexDirection: 'row', width: 10000, paddingLeft: spacing.lg },
+conjunto: { flexDirection: 'row', gap: spacing.xxl, paddingRight: spacing.xxl },
+avisoTexto: {
+  ...typography.caption,
+  fontSize: 22,
+  fontWeight: '700',
+  color: tints.onNavyText,
+},
 
   nav: {
     flexDirection: 'row',
@@ -119,7 +147,7 @@ const estilos = StyleSheet.create({
     backgroundColor: colors.white,
   },
   navItem: { alignItems: 'center', gap: spacing.xs, minWidth: 64 },
-  navLabel: { ...typography.caption, fontWeight: '600' },
+  navLabel: { ...typography.caption, fontWeight: '700' },
   navBadge: {
     position: 'absolute',
     top: -5,

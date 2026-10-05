@@ -1,5 +1,15 @@
-import React from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Avatar, Card, EmptyState, Loading, SectionTitle } from '../components/ui';
 import { Icon, NomeIcone } from '../components/Icon';
 import { CaronaCard } from './CaronaCard';
@@ -7,12 +17,17 @@ import { colors, radius, spacing, tints, typography } from '../theme';
 import { formatarMoeda, primeiroNome } from '../lib/format';
 import { caronaService, notificacaoService, usuarioService } from '../lib/servicos';
 import { useCarregar } from '../lib/useCarregar';
+import type { Carona } from '../lib/tipos';
 import { useNavigation } from '../state/NavigationContext';
 import { useAuth } from '../state/AuthContext';
 
 export function HomeScreen() {
   const { navegar } = useNavigation();
   const { usuario } = useAuth();
+  const { width } = useWindowDimensions();
+
+  // Largura de cada card do carrossel (50% da tela). Aumente ou diminua o 0.50 para ajustar.
+  const larguraCard = Math.round(width * 0.50);
 
   const painel = useCarregar(async () => {
     const [minhas, estatisticas, sugestoes, notificacoes] = await Promise.all([
@@ -28,6 +43,8 @@ export function HomeScreen() {
     ? [...painel.dados.minhas.reservadas, ...painel.dados.minhas.oferecidas].slice(0, 3)
     : [];
 
+  const abrirCarona = (caronaId: string) => navegar('ride-details', { caronaId });
+
   return (
     <ScrollView
       style={estilos.tela}
@@ -38,21 +55,18 @@ export function HomeScreen() {
     >
       <View style={estilos.cabecalho}>
         <View style={estilos.cabecalhoLinha}>
-          <View>
-            <Text style={estilos.saudacaoLabel}>Olá,</Text>
-            <Text style={estilos.saudacaoNome}>{primeiroNome(usuario?.nome) || 'estudante'}</Text>
-          </View>
+          <Pressable onPress={() => navegar('profile')} style={estilos.cabecalhoUsuario}>
+            <Avatar nome={usuario?.nome} tamanho={46} />
+            <View>
+              <Text style={estilos.saudacaoLabel}>Olá,</Text>
+              <Text style={estilos.saudacaoNome}>{primeiroNome(usuario?.nome) || 'estudante'}</Text>
+            </View>
+          </Pressable>
 
-          <View style={estilos.cabecalhoAcoes}>
-            <Pressable onPress={() => navegar('notifications')} hitSlop={8} style={estilos.sino}>
-              <Icon name="bell" size={22} color={colors.white} />
-              {painel.dados && painel.dados.naoLidas > 0 ? <View style={estilos.pontoAviso} /> : null}
-            </Pressable>
-
-            <Pressable onPress={() => navegar('profile')}>
-              <Avatar nome={usuario?.nome} tamanho={46} />
-            </Pressable>
-          </View>
+          <Pressable onPress={() => navegar('notifications')} hitSlop={8} style={estilos.sino}>
+            <Icon name="bell" size={22} color={colors.white} />
+            {painel.dados && painel.dados.naoLidas > 0 ? <View style={estilos.pontoAviso} /> : null}
+          </Pressable>
         </View>
 
         <Pressable style={estilos.busca} onPress={() => navegar('find-ride')}>
@@ -62,6 +76,14 @@ export function HomeScreen() {
       </View>
 
       <View style={estilos.corpo}>
+        {painel.dados && painel.dados.sugestoes.length > 0 ? (
+          <CarrosselLoop
+            caronas={painel.dados.sugestoes}
+            larguraCard={larguraCard}
+            onAbrir={abrirCarona}
+          />
+        ) : null}
+
         <View style={estilos.acoes}>
           <AcaoRapida
             titulo="Buscar carona"
@@ -133,7 +155,7 @@ export function HomeScreen() {
                       key={carona.id}
                       carona={carona}
                       compacto
-                      onPress={() => navegar('ride-details', { caronaId: carona.id })}
+                      onPress={() => abrirCarona(carona.id)}
                     />
                   ))}
                 </View>
@@ -151,7 +173,7 @@ export function HomeScreen() {
                       key={carona.id}
                       carona={carona}
                       compacto
-                      onPress={() => navegar('ride-details', { caronaId: carona.id })}
+                      onPress={() => abrirCarona(carona.id)}
                     />
                   ))}
                 </View>
@@ -161,6 +183,70 @@ export function HomeScreen() {
         )}
       </View>
     </ScrollView>
+  );
+}
+
+/**
+ * Carrossel contínuo: os cards correm devagar para a esquerda, sem parar em cada
+ * um, e o conjunto se repete para o loop não ter emenda. Cada card é clicável e
+ * abre os detalhes da carona. Com uma carona só, fica parado.
+ */
+function CarrosselLoop({
+  caronas,
+  larguraCard,
+  onAbrir,
+}: {
+  caronas: Carona[];
+  larguraCard: number;
+  onAbrir: (caronaId: string) => void;
+}) {
+  const deslocamento = useRef(new Animated.Value(0)).current;
+  const [larguraConjunto, setLarguraConjunto] = useState(0);
+  const animar = caronas.length > 1;
+
+  useEffect(() => {
+    if (!animar || larguraConjunto === 0) return;
+
+    deslocamento.setValue(0);
+    const animacao = Animated.loop(
+      Animated.timing(deslocamento, {
+        toValue: 1,
+        duration: larguraConjunto * 25, // ~40px por segundo
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    animacao.start();
+    return () => animacao.stop();
+  }, [animar, deslocamento, larguraConjunto]);
+
+  const translateX = deslocamento.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -larguraConjunto],
+  });
+
+  const renderConjunto = (sufixo: string, medir: boolean) => (
+    <View
+      key={sufixo}
+      style={estilos.carrosselConjunto}
+      onLayout={medir ? (e) => setLarguraConjunto(e.nativeEvent.layout.width) : undefined}
+    >
+      {caronas.map((carona) => (
+        <View key={`${sufixo}-${carona.id}`} style={{ width: larguraCard }}>
+          <CaronaCard carona={carona} compacto onPress={() => onAbrir(carona.id)} />
+        </View>
+      ))}
+    </View>
+  );
+
+  return (
+    <View style={estilos.carrosselFora}>
+      <Animated.View
+        style={[estilos.carrosselTrilha, animar && { transform: [{ translateX }] }]}
+      >
+        {animar ? [renderConjunto('a', true), renderConjunto('b', false)] : renderConjunto('a', false)}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -244,7 +330,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xl,
   },
-  cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  cabecalhoUsuario: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   sino: { padding: 4 },
   pontoAviso: {
     position: 'absolute',
@@ -293,4 +379,9 @@ const estilos = StyleSheet.create({
 
   secao: { gap: spacing.sm },
   lista: { gap: spacing.md },
+
+  // O carrossel vai de borda a borda da tela, mesmo dentro do `corpo` com padding.
+  carrosselFora: { marginHorizontal: -spacing.xl, overflow: 'hidden' },
+  carrosselTrilha: { flexDirection: 'row', width: 10000, paddingLeft: spacing.xl },
+  carrosselConjunto: { flexDirection: 'row', gap: spacing.md, paddingRight: spacing.md },
 });
