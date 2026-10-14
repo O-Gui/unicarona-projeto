@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useState, useEffect } from 'react'; // 🟢 Adicionado useEffect
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, Alert } from 'react-native'; // 🟢 Adicionado Alert
 import { Button, EmptyState, ErrorState, Header, Loading } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { CaronaCard } from './CaronaCard';
@@ -15,14 +15,33 @@ export function FindRideScreen() {
   // A busca avançada devolve os filtros por parâmetro de navegação.
   const filtrosIniciais: FiltrosBusca = atual.params?.filtros ?? {};
 
-  const [origem, setOrigem] = useState(filtrosIniciais.origem ?? '');
-  const [destino, setDestino] = useState(filtrosIniciais.destino ?? '');
+  // 🟢 Lendo origem e destino diretamente dos parâmetros da notificação (se existirem)
+  const [origem, setOrigem] = useState(atual.params?.origem ?? filtrosIniciais.origem ?? '');
+  const [destino, setDestino] = useState(atual.params?.destino ?? filtrosIniciais.destino ?? '');
   const [data, setData] = useState('');
-  const [filtros, setFiltros] = useState<FiltrosBusca>(filtrosIniciais);
+  
+  // 🟢 Inicializando os filtros já com a origem e destino caso venham da notificação
+  const [filtros, setFiltros] = useState<FiltrosBusca>({
+    ...filtrosIniciais,
+    origem: atual.params?.origem ?? filtrosIniciais.origem,
+    destino: atual.params?.destino ?? filtrosIniciais.destino,
+  });
+  
   const [reservandoId, setReservandoId] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
   const busca = useCarregar(() => caronaService.buscar(filtros), [JSON.stringify(filtros)]);
+
+  // 🟢 Dispara o alerta se a tela for aberta com o parâmetro 'alertaDesconto'
+  useEffect(() => {
+    if (atual.params?.alertaDesconto) {
+      Alert.alert(
+        'Desconto de 50%',
+        'INFORME AO MOTORISTA QUE ESSE TRAJETO DEVE HAVER UM DESCONTO DE 50%',
+        [{ text: 'Entendido' }]
+      );
+    }
+  }, [atual.params?.alertaDesconto]);
 
   const aplicar = () => {
     setAviso(null);
@@ -145,7 +164,6 @@ export function FindRideScreen() {
   );
 }
 
-/** "01/05/2026" (digitado) → "2026-05-01" (esperado pela API). */
 function converterData(valor: string): string | undefined {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(valor)) return undefined;
   const [dia, mes, ano] = valor.split('/');
@@ -154,13 +172,8 @@ function converterData(valor: string): string | undefined {
 
 function contarFiltros(filtros: FiltrosBusca): number {
   const chaves: (keyof FiltrosBusca)[] = [
-    'precoMin',
-    'precoMax',
-    'horaInicio',
-    'horaFim',
-    'vagasMinimas',
-    'notaMinima',
-    'apenasVerificados',
+    'precoMin', 'precoMax', 'horaInicio', 'horaFim',
+    'vagasMinimas', 'notaMinima', 'apenasVerificados',
   ];
   let total = chaves.filter((chave) => filtros[chave] !== undefined).length;
   if (filtros.preferencias?.length) total += 1;
@@ -170,37 +183,17 @@ function contarFiltros(filtros: FiltrosBusca): number {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-
   formulario: { gap: spacing.md, marginTop: spacing.lg },
-  campoClaro: {
-    backgroundColor: colors.white,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
+  campoClaro: { backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: spacing.lg, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   marcador: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.orange },
   entradaClara: { flex: 1, ...typography.body, color: colors.navy, paddingVertical: spacing.md },
   linhaDupla: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   botaoBuscar: { minHeight: 46, paddingHorizontal: spacing.xl },
-
   conteudo: { padding: spacing.xl, gap: spacing.lg },
   resultadoTopo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultadoTexto: { ...typography.small, color: colors.mutedForeground },
-  botaoFiltros: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  botaoFiltros: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border },
   botaoFiltrosTexto: { ...typography.smallMedium, color: colors.navy },
-
   aviso: { ...typography.small, color: colors.navy, backgroundColor: colors.muted, padding: spacing.md, borderRadius: radius.sm },
   lista: { gap: spacing.lg },
 });

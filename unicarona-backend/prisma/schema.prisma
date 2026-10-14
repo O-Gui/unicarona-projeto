@@ -48,6 +48,7 @@ enum TipoNotificacao {
   NOVA_AVALIACAO
   VERIFICACAO
   MENSAGEM
+  ANUNCIO_SISTEMA // Novo tipo adicionado para os avisos
 }
 
 model Usuario {

@@ -19,7 +19,7 @@ const ABAS: { label: string; grupo?: string }[] = [
   { label: 'Verificação', grupo: 'verificacao' },
 ];
 
-const VISUAL: Record<TipoNotificacao, { icone: NomeIcone; cor: string }> = {
+const VISUAL: Record<TipoNotificacao | 'ANUNCIO_SISTEMA', { icone: NomeIcone; cor: string }> = {
   SOLICITACAO_CARONA: { icone: 'users', cor: colors.orange },
   SOLICITACAO_RESPONDIDA: { icone: 'check-circle', cor: colors.success },
   CARONA_CANCELADA: { icone: 'alert-circle', cor: colors.destructive },
@@ -27,6 +27,8 @@ const VISUAL: Record<TipoNotificacao, { icone: NomeIcone; cor: string }> = {
   NOVA_AVALIACAO: { icone: 'star', cor: colors.orange },
   VERIFICACAO: { icone: 'shield', cor: colors.navy },
   MENSAGEM: { icone: 'message-circle', cor: colors.navy },
+  // 🟢 Adicionado ícone e cor para os Anúncios do Sistema
+  ANUNCIO_SISTEMA: { icone: 'bell', cor: colors.orange }, 
 };
 
 export function NotificationsScreen() {
@@ -46,8 +48,22 @@ export function NotificationsScreen() {
           naoLidas: Math.max(0, (lista.dados?.naoLidas ?? 1) - 1),
         });
       } catch {
-        // Marcar como lida é secundário: se falhar, a navegação continua.
+        // Marcar como lida é secundário.
       }
+    }
+
+    // Roteamento de Anúncios do Sistema
+    if (notificacao.tipo === ('ANUNCIO_SISTEMA' as any)) {
+      if (notificacao.titulo === 'Promoção Motorista') {
+        navegar('find-ride');
+      } 
+      else if (notificacao.titulo === 'Novas Rotas') {
+        navegar('find-ride', { origem: 'Campus Sul', destino: 'Centro' });
+      } 
+      else if (notificacao.titulo === 'Semana Acadêmica') {
+        navegar('find-ride', { alertaDesconto: true });
+      }
+      return;
     }
 
     if (!notificacao.referencia) return;

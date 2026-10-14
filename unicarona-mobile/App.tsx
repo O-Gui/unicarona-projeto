@@ -2,8 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-
-import { AnnouncementBar, BottomNav } from './components/AppChrome';
+import { BottomNav } from './components/AppChrome';
 import { Loading } from './components/ui';
 import { colors, MAX_WIDTH } from './theme';
 import { notificacaoService } from './lib/servicos';
@@ -150,7 +149,6 @@ function Aplicacao() {
   return (
     <View style={estilos.fundo}>
       <View style={estilos.limite}>
-        {mostrarCromo ? <AnnouncementBar onNavegar={navegar} /> : null}
 
         <View style={estilos.conteudo}>
           {/* A chave força a remontagem ao trocar de rota, zerando o estado
