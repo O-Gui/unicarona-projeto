@@ -19,6 +19,7 @@ import { formatarDataCompleta, formatarHora, formatarMoeda } from '../lib/format
 import { caronaService, chatService, solicitacaoService } from '../lib/servicos';
 import { useCarregar } from '../lib/useCarregar';
 import { useNavigation } from '../state/NavigationContext';
+import { MapaRota } from '../components/MapaRota';
 
 const ROTULO_SOLICITACAO: Record<string, { texto: string; cor: string }> = {
   PENDENTE: { texto: 'Aguardando confirmação', cor: colors.orange },
@@ -144,6 +145,15 @@ export function RideDetailsScreen() {
             detalheOrigem={carona.origem.endereco}
             detalheDestino={carona.destino.endereco}
           />
+          
+          {carona.coordenadas ? (
+            <MapaRota
+              origem={carona.coordenadas.origem}
+              destino={carona.coordenadas.destino}
+              origemNome={carona.origem.nome}
+              destinoNome={carona.destino.nome}
+            />
+          ) : null}
 
           <View style={estilos.infoGrade}>
             <InfoItem

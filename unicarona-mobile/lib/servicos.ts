@@ -175,7 +175,7 @@ export const notificacaoService = {
   listar: (grupo?: string) =>
     api.get<{ itens: Notificacao[]; naoLidas: number }>('/notificacoes', { grupo }),
 
-  naoLidas: () => api.get<{ total: number }>('/notificacoes/nao-lidas'),
+   naoLidas: () => api.get<{ total: number; todas: number }>('/notificacoes/nao-lidas'),
 
   ler: (id: string) => api.patch<Notificacao>(`/notificacoes/${id}/ler`),
 

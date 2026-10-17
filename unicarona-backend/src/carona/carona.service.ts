@@ -202,6 +202,7 @@ export class CaronaService {
     return resultado;
   }
 
+  /** Detalhe da carona, já com as coordenadas que alimentam o mapa da rota. */
   async detalhe(usuarioId: string, id: string) {
     const carona = await this.prisma.carona.findUnique({
       where: { id },
@@ -227,9 +228,17 @@ export class CaronaService {
     const minhaSolicitacao =
       carona.solicitacoes.find((s) => s.passageiro.id === usuarioId) ?? null;
 
+    const rota = await this.rotaRepository.buscarPorId(carona.rotaId);
+
     return {
       ...formatada,
       distanciaKm: await this.rotaRepository.distanciaKm(carona.rotaId),
+      coordenadas: rota
+        ? {
+            origem: { lat: Number(rota.origemLat), lng: Number(rota.origemLng) },
+            destino: { lat: Number(rota.destinoLat), lng: Number(rota.destinoLng) },
+          }
+        : null,
       souMotorista: carona.rota.usuario.id === usuarioId,
       minhaSolicitacao,
       solicitacoes: carona.solicitacoes,

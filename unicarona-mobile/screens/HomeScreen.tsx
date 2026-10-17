@@ -20,10 +20,12 @@ import { useCarregar } from '../lib/useCarregar';
 import type { Carona } from '../lib/tipos';
 import { useNavigation } from '../state/NavigationContext';
 import { useAuth } from '../state/AuthContext';
+import { useNaoLidas } from '../lib/useNaoLidas';
 
 export function HomeScreen() {
   const { navegar } = useNavigation();
   const { usuario } = useAuth();
+  const { todas: naoLidas } = useNaoLidas();
   const { width } = useWindowDimensions();
 
   // Largura de cada card do carrossel (50% da tela). Aumente ou diminua o 0.50 para ajustar.
@@ -65,7 +67,7 @@ export function HomeScreen() {
 
           <Pressable onPress={() => navegar('notifications')} hitSlop={8} style={estilos.sino}>
             <Icon name="bell" size={22} color={colors.white} />
-            {painel.dados && painel.dados.naoLidas > 0 ? <View style={estilos.pontoAviso} /> : null}
+            {naoLidas > 0 ? <View style={estilos.pontoAviso} /> : null}
           </Pressable>
         </View>
 
@@ -339,7 +341,7 @@ const estilos = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: colors.orange,
+    backgroundColor: colors.destructive,
   },
   saudacaoLabel: { ...typography.small, color: tints.onNavyText },
   saudacaoNome: { ...typography.h2, color: colors.white },

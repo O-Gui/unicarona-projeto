@@ -89,6 +89,10 @@ export interface Solicitacao {
 
 export interface CaronaDetalhe extends Carona {
   distanciaKm: number | null;
+  coordenadas?: {
+    origem: { lat: number; lng: number };
+    destino: { lat: number; lng: number };
+  } | null;
   souMotorista: boolean;
   minhaSolicitacao: Solicitacao | null;
   solicitacoes: Solicitacao[];
@@ -166,3 +170,5 @@ export interface AuthResponse {
   tokenType: string;
   usuario: Usuario;
 }
+
+

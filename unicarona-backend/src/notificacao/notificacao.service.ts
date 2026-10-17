@@ -95,17 +95,16 @@ export class NotificacaoService {
   // MÉTODOS DE LEITURA E CONTAGEM (CONSUMIDOS PELO APP)
   // =========================================================================
 
-  /** Conta APENAS conversas diretas de chat não lidas para o badge do ícone de Bate-papo (BottomNav) */
-  contarMensagensNaoLidas(usuarioId: string) {
-    return this.prisma.notificacao
-      .count({
-        where: {
-          usuarioId,
-          lida: false,
-          tipo: TipoNotificacao.MENSAGEM, // Exclui estritamente os anúncios do sistema do badge
-        },
-      })
-      .then((total) => ({ total }));
+  /** `total` = só mensagens de chat (badge da aba Mensagens); `todas` = tudo não lido (sino da Home). */
+  async contarMensagensNaoLidas(usuarioId: string) {
+    const [mensagens, todas] = await Promise.all([
+      this.prisma.notificacao.count({
+        where: { usuarioId, lida: false, tipo: TipoNotificacao.MENSAGEM },
+      }),
+      this.prisma.notificacao.count({ where: { usuarioId, lida: false } }),
+    ]);
+
+    return { total: mensagens, todas };
   }
 
   /** Lista as notificações do usuário logado, filtrando opcionalmente por grupo/aba */
